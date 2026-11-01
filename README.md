@@ -89,3 +89,7 @@ out/                   approved figures, LaTeX caption snippet, BibTeX
 
 `out/digital_twin_light.png`, `out/digital_twin_dark.png`, `out/figure_snippet.tex` (figure + caption to paste into the report),
 `out/references_additions.bib`.
+
+
+##Aother:
+Aljoud Almousa 
