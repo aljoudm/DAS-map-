@@ -1,14 +1,15 @@
 function draw_assets(ax, scene, lw)
 % DRAW_ASSETS  Interrogator units and UAVs (hovering, downward sensing cone). UAV altitude and
 % cone size are display values, NOT to scale.
-cfg = scene.cfg;  c = cfg.col;  th = scene.th;  F = scene.fibre;  T = scene.T;
+cfg = scene.cfg;  c = cfg.col;  th = scene.th;  F = scene.fibre;  T = scene.T;  ks = cfg.uiScale;
 
 for k = 1:numel(F.iuIdx)                                   % IU: pole + square head + ground ring
     x = F.iuX(k);  y = F.iuY(k);  z0 = F.iuZ(k);  h = 1.4;
     plot3(ax, [x x], [y y], [z0 z0 + h], '-', 'Color', [c.cyan 0.7], 'LineWidth', 1.4 * lw);
     drawRing(ax, T, x, y, 0.55, [c.cyan 0.9], 1.4 * lw);
-    scatter3(ax, x, y, z0 + h, 46, 's', 'MarkerFaceColor', c.iu, 'MarkerEdgeColor', th.frame, 'LineWidth', 0.9);
+    scatter3(ax, x, y, z0 + h, 46 * ks^2, 's', 'MarkerFaceColor', c.iu, 'MarkerEdgeColor', th.frame, 'LineWidth', 0.9 * ks, 'Tag', 'iu');
 end
+if isfield(scene, 'anim') && scene.anim, return; end      % interactive version animates the UAVs itself
 
 for k = 1:numel(scene.uav)
     u = scene.uav(k);

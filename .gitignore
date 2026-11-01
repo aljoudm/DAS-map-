@@ -32,3 +32,6 @@ codegen/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ---- Downloaded third-party sources (copyrighted; never push) ----
+sources/

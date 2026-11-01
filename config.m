@@ -102,6 +102,7 @@ cfg.gfx = 0.55;                 % line-width / marker scale (design was drawn fo
 
 % --- Figure layout: physical size so that fonts stay legible when scaled to page width ----
 cfg.figSizeIn  = [8.0 5.0];
+cfg.uiScale    = 1;      % scale of fonts / markers / line widths relative to the 8-inch static design (interactive window: > 1)
 cfg.exportDpi  = 400;
 cfg.layout.main    = [0.000 0.405 1.000 0.595];        % wide oblique map across the top
 cfg.layout.rowY    = 0.095;   cfg.layout.rowH = 0.295;     % row of panels below the map

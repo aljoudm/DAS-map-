@@ -49,15 +49,15 @@ annotation(fig, 'line', [sw(1) / W, insetPos(1)],                [1 - sw(2) / H,
 annotation(fig, 'line', [se(1) / W, insetPos(1) + insetPos(3)],  [1 - se(2) / H, top], 'Color', th.frame, 'LineWidth', 0.7);
 
 % ---------------- panels, legend, credit ----------------
-drawStatus(fig, statusPos, scene);
-drawTrace(fig, tracePos, scene);
-drawLegend(fig, Lc.legend, scene);
+draw_status(fig, statusPos, scene);
+draw_trace(fig, tracePos, scene);
+draw_legend(fig, Lc.legend, scene);
 annotation(fig, 'textbox', Lc.credit, 'String', cfg.imageryCredit, 'EdgeColor', 'none', 'Color', th.credit, ...
     'FontName', cfg.font.name, 'FontSize', cfg.font.note.size, 'VerticalAlignment', 'bottom', 'Margin', 0);
 
 oa = axes(fig, 'Position', [0 0 1 1], 'Color', 'none');   hold(oa, 'on');   oa.XLim = [0 1];   oa.YLim = [0 1];   axis(oa, 'off');
-north_arrow(oa, [0.03, Lc.main(2) + 0.40 * Lc.main(4)], 0.10, th.text, th.bg, cfg.font);                      % main map (on the page)
-north_arrow(oa, [insetPos(1) + insetPos(3) - 0.022, insetPos(2) + insetPos(4) - 0.115], 0.075, [1 1 1], [0.06 0.08 0.11], cfg.font);   % inset (on imagery)
+north_arrow(oa, [0.03, Lc.main(2) + 0.40 * Lc.main(4)], 0.10, th.text, th.bg, cfg);                      % main map (on the page)
+north_arrow(oa, [insetPos(1) + insetPos(3) - 0.022, insetPos(2) + insetPos(4) - 0.115], 0.075, [1 1 1], [0.06 0.08 0.11], cfg);   % inset (on imagery)
 
 drawnow;   pause(0.5);
 png = fullfile(cfg.outDir, sprintf('digital_twin_%s.png', th.name));
@@ -158,147 +158,4 @@ for i = 1:size(pts, 1)
     if ~isempty(r), px(i, :) = [mean(c), mean(r)] / sc; end
 end
 if any(isnan(px(:))), error('Marker(s) %s not found (hidden or off screen).', mat2str(find(any(isnan(px), 2))')); end
-end
-
-function ax = panelAxes(fig, pos, th)
-ax = axes(fig, 'Position', pos);   hold(ax, 'on');
-ax.XLim = [0 1];   ax.YLim = [0 1];   axis(ax, 'off');
-rectangle(ax, 'Position', [0 0 1 1], 'FaceColor', th.panel, 'EdgeColor', th.panelEdge, 'LineWidth', 0.6);
-end
-
-function s = thousands(n)
-s = regexprep(sprintf('%d', round(n)), '(\d)(?=(\d{3})+$)', '$1,');
-end
-
-function drawStatus(fig, pos, scene)
-cfg = scene.cfg;  th = scene.th;  F = scene.fibre;  A = scene.assets;  c = cfg.col;  fn = cfg.font;
-ax = panelAxes(fig, pos, th);
-hin = pos(4) * cfg.figSizeIn(2);                                  % panel height [in]; rows are placed in inches from the top
-Y = @(inch) 1 - inch / hin;
-txt = @(x, inch, s, col, st, ha) text(ax, x, Y(inch), s, 'Color', col, 'FontName', fn.name, 'FontSize', st.size, ...
-    'FontWeight', st.weight, 'HorizontalAlignment', ha, 'VerticalAlignment', 'middle');
-bold = struct('size', fn.panel.size, 'weight', 'bold');
-txt(0.05, 0.12, 'STATUS', th.muted, fn.title, 'left');
-rows = {'Fibre length',          sprintf('%.1f km', F.L_km);
-        'Interrogator units',    sprintf('%d', F.N_IU);
-        'Sensing points',        thousands(F.N_sensing);
-        ['CCTV / UAV / patrols ' char(8224)], sprintf('%d / %d / %d', numel(A.cctv), numel(scene.uav), size(A.patrol, 1));
-        'Hajj 2026 pilgrims',    thousands(cfg.hajjPilgrims2026)};
-y = 0.30;
-for i = 1:size(rows, 1)
-    txt(0.05, y, rows{i,1}, th.muted, fn.panel, 'left');
-    txt(0.95, y, rows{i,2}, th.text, bold, 'right');
-    y = y + 0.135;
-end
-plot(ax, [0.05 0.95], Y([y - 0.07 y - 0.07]), '-', 'Color', th.panelEdge, 'LineWidth', 0.5);
-y = y + 0.03;
-plot(ax, 0.075, Y(y), 'o', 'MarkerSize', 3.8, 'MarkerFaceColor', c.red, 'MarkerEdgeColor', 'none');
-txt(0.12, y, ['Intruder: detected ' char(8594) ' human ' char(8224)], th.text, fn.panel, 'left');
-txt(0.95, y, 'ALARM', th.intLbl, bold, 'right');
-y = y + 0.135;
-plot(ax, 0.075, Y(y), 'o', 'MarkerSize', 3.8, 'MarkerFaceColor', c.yellow, 'MarkerEdgeColor', 'none');
-txt(0.12, y, ['Vehicle on road ' char(8224)], th.text, fn.panel, 'left');
-txt(0.95, y, 'LOGGED', th.aniLbl, bold, 'right');
-txt(0.05, hin - 0.085, [char(8224) ' proposed scenario / placement'], th.muted, fn.note, 'left');
-end
-
-function drawTrace(fig, pos, scene)
-% DAS trace panel: output of the phi-OTDR simulation (main.m defaults, 10 km section). The mapping to the map is stated
-% explicitly under the plot: walking = map intruder, vehicle = map vehicle; digging and the calibration sine are simulated
-% only (not placed on the map, neutral colour).
-cfg = scene.cfg;  th = scene.th;  sim = scene.sim;  fn = cfg.font;
-bg = panelAxes(fig, pos, th);
-hin = pos(4) * cfg.figSizeIn(2);
-text(bg, 0.05, 1 - 0.12 / hin, [char(966) '-OTDR SIMULATION'], 'Color', th.muted, 'FontName', fn.name, 'FontSize', fn.title.size, ...
-    'FontWeight', 'bold', 'VerticalAlignment', 'middle');
-axBottom = pos(2) + 0.68 / cfg.figSizeIn(2);   axTop = pos(2) + pos(4) - 0.30 / cfg.figSizeIn(2);
-ax = axes(fig, 'Position', [pos(1) + 0.15 * pos(3), axBottom, 0.80 * pos(3), axTop - axBottom], 'Color', 'none');
-hold(ax, 'on');
-z = sim.z / 1e3;   a = sim.a;
-patch(ax, [z; flipud(z)], [a; zeros(size(a))], th.trace, 'FaceAlpha', 0.16, 'EdgeColor', 'none');
-plot(ax, z, a, '-', 'Color', th.trace, 'LineWidth', 0.5);
-yline(ax, sim.thr, '--', 'Color', th.thr, 'LineWidth', 0.7);
-text(ax, 9.9, sim.thr + 0.4, 'threshold', 'Color', th.thr, 'FontName', fn.name, 'FontSize', fn.note.size, ...
-    'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
-ymax = max(a) * 1.30;
-for i = 1:numel(sim.events)
-    ev = sim.events(i);
-    switch ev.type
-        case "walk",    col = th.intLbl;   lab = "walking";
-        case "vehicle", col = th.aniLbl;   lab = "vehicle";
-        case "dig",     col = th.muted;    lab = "digging";
-        otherwise,      col = th.muted;    lab = "calibration";
-    end
-    plot(ax, ev.z0 / 1e3, ev.peak_nm, 'o', 'MarkerSize', 2.8, 'MarkerFaceColor', col, 'MarkerEdgeColor', 'none');
-    text(ax, ev.z0 / 1e3, ev.peak_nm + 0.025 * ymax, lab, 'Color', col, 'FontName', fn.name, 'FontSize', fn.note.size, ...
-        'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-end
-xlim(ax, [0 10]);   ylim(ax, [0 ymax]);   xticks(ax, 0:2:10);   yticks(ax, 0:10:20);
-ax.FontName = fn.name;   ax.FontSize = fn.note.size;   ax.XColor = th.muted;   ax.YColor = th.muted;
-ax.LineWidth = 0.5;   ax.TickDir = 'out';   ax.Box = 'off';   ax.YGrid = 'on';   ax.GridColor = th.grid;   ax.GridAlpha = 0.6;
-xlabel(ax, 'Distance (km)', 'Color', th.muted, 'FontSize', fn.note.size);
-ylabel(ax, 'Activity (nm rms)', 'Color', th.muted, 'FontSize', fn.note.size);
-% mapping rows (inches from the panel bottom)
-ar = char(8594);   dg = char(8224);
-rows = {th.intLbl,  ['walking = map intruder: detected ' ar ' human ' ar ' ALARM ' dg];
-        th.aniLbl,  ['vehicle = map vehicle: detected ' ar ' on road ' ar ' logged ' dg];
-        th.muted,   'digging, calibration: simulated only, not on the map'};
-for k = 1:3
-    yy = 0.33 - (k - 1) * 0.12;
-    plot(bg, 0.06, yy / hin, 'o', 'MarkerSize', 3, 'MarkerFaceColor', rows{k, 1}, 'MarkerEdgeColor', 'none');
-    text(bg, 0.10, yy / hin, rows{k, 2}, 'Color', th.text, 'FontName', fn.name, 'FontSize', fn.note.size, 'VerticalAlignment', 'middle');
-end
-end
-
-function drawLegend(fig, pos, scene)
-cfg = scene.cfg;  th = scene.th;  c = cfg.col;  fn = cfg.font;
-ax = axes(fig, 'Position', pos, 'Color', 'none');   hold(ax, 'on');
-ax.XLim = [0 1];   ax.YLim = [0 1];   axis(ax, 'off');
-edge = th.text;
-names = {'DAS fibre', 'Light pulse', 'Simulated section', 'Interrogator', 'C2 centre', 'Road entry', ...
-         'CCTV + FOV', 'UAV + cone', 'Patrol', 'Intruder', 'Vehicle on road', 'Weak coverage'};
-for k = 1:12
-    col = mod(k - 1, 6);   row = floor((k - 1) / 6);
-    x = col * 0.1665 + 0.008;   y = 0.74 - 0.48 * row;   xi = x + 0.014;
-    switch k
-        case 1
-            seg = [c.cyan; c.green; c.yellow; c.red];
-            for q = 1:4, plot(ax, x + [0 0.0065] + (q - 1) * 0.0062, [y y], '-', 'Color', seg(q, :), 'LineWidth', 1.6); end
-        case 2
-            plot(ax, x + [0 0.026], [y y], '-', 'Color', [c.cyan 0.55], 'LineWidth', 3.4);
-            plot(ax, x + [0 0.026], [y y], '-', 'Color', [1 1 1], 'LineWidth', 1.2);
-        case 3
-            plot(ax, x + [0 0.026], [y + 0.14 y + 0.14], '--', 'Color', edge, 'LineWidth', 0.8);
-            plot(ax, x + [0 0.026], [y - 0.14 y - 0.14], '--', 'Color', edge, 'LineWidth', 0.8);
-        case 4, plot(ax, xi, y, 's', 'MarkerSize', 4.2, 'MarkerFaceColor', c.iu, 'MarkerEdgeColor', th.frame, 'LineWidth', 0.8);
-        case 5, plot(ax, xi, y, 'p', 'MarkerSize', 6.5, 'MarkerFaceColor', c.c2, 'MarkerEdgeColor', edge, 'LineWidth', 0.4);
-        case 6, plot(ax, xi, y, 'd', 'MarkerSize', 4.6, 'MarkerFaceColor', c.entry, 'MarkerEdgeColor', edge, 'LineWidth', 0.6);
-        case 7
-            patch(ax, [xi xi + 0.012 xi + 0.012], [y y + 0.15 y - 0.15], c.cctv, 'FaceAlpha', 0.5, 'EdgeColor', c.cctv, 'LineWidth', 0.4);
-            plot(ax, xi, y, 'o', 'MarkerSize', 3, 'MarkerFaceColor', c.cctv, 'MarkerEdgeColor', edge, 'LineWidth', 0.4);
-        case 8
-            patch(ax, [xi xi + 0.010 xi - 0.010], [y + 0.12 y - 0.2 y - 0.2], c.cyan, 'FaceAlpha', 0.35, 'EdgeColor', c.cyan, 'LineWidth', 0.4);
-            plot(ax, xi, y + 0.12, 'o', 'MarkerSize', 3.4, 'MarkerFaceColor', c.uav, 'MarkerEdgeColor', th.frame, 'LineWidth', 0.6);
-        case 9,  plot(ax, xi, y, 's', 'MarkerSize', 4, 'MarkerFaceColor', c.patrol, 'MarkerEdgeColor', edge, 'LineWidth', 0.5);
-        case 10, plot(ax, xi, y, 'o', 'MarkerSize', 4.6, 'MarkerFaceColor', c.red, 'MarkerEdgeColor', edge, 'LineWidth', 0.4);
-        case 11, plot(ax, xi, y, 'o', 'MarkerSize', 4.2, 'MarkerFaceColor', c.yellow, 'MarkerEdgeColor', edge, 'LineWidth', 0.4);
-        case 12
-            patch(ax, [x x + 0.0095 x + 0.0095 x], [y - 0.16 y - 0.16 y + 0.16 y + 0.16], c.riskLo, 'EdgeColor', 'none', 'FaceAlpha', 0.85);
-            patch(ax, [x + 0.0095 x + 0.019 x + 0.019 x + 0.0095], [y - 0.16 y - 0.16 y + 0.16 y + 0.16], c.riskHi, 'EdgeColor', 'none', 'FaceAlpha', 0.85);
-    end
-    text(ax, x + 0.034, y, names{k}, 'Color', th.text, 'FontName', fn.name, 'FontSize', fn.panel.size - 0.6, ...
-        'VerticalAlignment', 'middle', 'HorizontalAlignment', 'left');
-end
-end
-
-function north_arrow(ax, c, h, fillCol, edgeCol, fn)
-% North arrow in figure-normalised units (north is up on screen: both views look due north, az = 180).
-w = 0.085 / 8;   yt = c(2) + h;   yh = yt - 0.45 * h;
-plot(ax, [c(1) c(1)], [c(2) yh], '-', 'Color', edgeCol, 'LineWidth', 2.6);
-plot(ax, [c(1) c(1)], [c(2) yh], '-', 'Color', fillCol, 'LineWidth', 1.1);
-patch(ax, [c(1) c(1) - w c(1) + w], [yt yh yh], fillCol, 'EdgeColor', edgeCol, 'LineWidth', 0.6);
-for o = [-1 -1; -1 1; 1 -1; 1 1]'
-    text(ax, c(1) + o(1) * 0.0012, yt + 0.024 + o(2) * 0.0016, 'N', 'Color', edgeCol, 'FontName', fn.name, 'FontSize', 8, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
-end
-text(ax, c(1), yt + 0.024, 'N', 'Color', fillCol, 'FontName', fn.name, 'FontSize', 8, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
 end

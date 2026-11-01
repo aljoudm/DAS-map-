@@ -1,17 +1,28 @@
-function draw_fibre(ax, scene, lw)
+function h = draw_fibre(ax, scene, lw)
 % DRAW_FIBRE  3D glowing fibre following the terrain, coloured by vibration energy,
 % with light pulses travelling outward from each interrogator (one frame of the animation).
-cfg = scene.cfg;  c = cfg.col;  F = scene.fibre;
+cfg = scene.cfg;  c = cfg.col;  F = scene.fibre;   h = struct();   anim = isfield(scene, 'anim') && scene.anim;
 x = [F.x; F.x(1)];  y = [F.y; F.y(1)];  z = [F.z; F.z(1)];  e = [F.energy; F.energy(1)];
 
 plot3(ax, x, y, z, '-', 'Color', [c.cyan 0.14], 'LineWidth', 7 * lw);
 plot3(ax, x, y, z, '-', 'Color', [c.cyan 0.30], 'LineWidth', 3.4 * lw);
 colormap(ax, c.fibreCmap);   clim(ax, [0 1]);
-patch(ax, 'XData', x, 'YData', y, 'ZData', z + 0.004, 'CData', e, 'FaceColor', 'none', ...
+h.core = patch(ax, 'XData', x, 'YData', y, 'ZData', z + 0.004, 'CData', e, 'FaceColor', 'none', ...
     'EdgeColor', 'interp', 'LineWidth', 1.9 * lw);
 
 hot = e > scene.thresholdNorm;                        % widen the glow above the simulator's detection threshold
-if any(hot)
+if anim
+    % interactive version: one glow per event so each can be switched on at its own time (alpha 0 until then)
+    Ev0 = scene.events;   sk = F.s_km(:);   Lk = F.L_km;   n0 = numel(sk);
+    dI0 = abs(sk - Ev0.s_int);   dI0 = min(dI0, Lk - dI0);   dV0 = abs(sk - Ev0.s_veh);   dV0 = min(dV0, Lk - dV0);
+    masks = {hot(1:n0) & dI0 < 3, hot(1:n0) & dV0 < 3};
+    h.hot = struct('glow', {}, 'core', {});
+    for q = 1:2
+        xh = x(1:n0);  yh = y(1:n0);  zh = z(1:n0);   xh(~masks{q}) = NaN;
+        h.hot(q).glow = plot3(ax, xh, yh, zh, '-', 'Color', [c.red 0], 'LineWidth', 13 * lw);
+        h.hot(q).core = plot3(ax, xh, yh, zh + 0.006, '-', 'Color', [c.red 0], 'LineWidth', 3.6 * lw);
+    end
+elseif any(hot)
     xh = x;  yh = y;  zh = z;  xh(~hot) = NaN;
     plot3(ax, xh, yh, zh, '-', 'Color', [c.red 0.32], 'LineWidth', 13 * lw);
     plot3(ax, xh, yh, zh + 0.006, '-', 'Color', [c.red 0.95], 'LineWidth', 3.6 * lw);
@@ -29,6 +40,7 @@ for q = [1 numel(xs)]
     plot3(ax, xs(q) + [-1 1] * 1.5 * offk * nxs(q), ys(q) + [-1 1] * 1.5 * offk * nys(q), zs(q) * [1 1] + 0.06, '-', 'Color', [1 1 1 0.95], 'LineWidth', 2.4 * lw);
 end
 
+if anim, return; end                                      % interactive version animates the pulses itself
 L = F.L_km;  s = F.s_km(:);                              % light pulses: each IU launches into ONE channel (n_ch = 1),
 for k = 1:numel(F.iuIdx)                                  % travelling along the fibre segment it serves (increasing distance)
     s0 = s(F.iuIdx(k));

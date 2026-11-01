@@ -2,6 +2,10 @@ function draw_risk(ax, scene)
 % DRAW_RISK  Weak-coverage heat map (semi-transparent) draped on the terrain. Computed, not drawn by hand
 % (compute_risk.m): slope + not seen by any CCTV + distance to roads, within a corridor around the fibre.
 T = scene.T;  R = scene.risk;  cfg = scene.cfg;  c = cfg.col;  m = T.base;
+if isfield(scene, 'meshStride') && scene.meshStride > 1
+    ri = unique([1:scene.meshStride:size(m.X, 1), size(m.X, 1)]);   ci = unique([1:scene.meshStride:size(m.X, 2), size(m.X, 2)]);
+    m.X = m.X(ri, ci);   m.Y = m.Y(ri, ci);   m.Z = m.Z(ri, ci);
+end
 LAT = T.toLat(m.Y);   LON = T.toLon(m.X);
 rk = R.at(LAT, LON);   al = R.alphaAt(LAT, LON);
 t = min(max((rk - cfg.riskShowFrom) / (1 - cfg.riskShowFrom), 0), 1);
