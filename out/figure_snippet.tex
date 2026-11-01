@@ -1,0 +1,38 @@
+% Paste this block into Chapter 1, directly below
+%   \section{Proposed Solution}\label{sec:solution}
+%   % high-level representative fig 1.1
+% Files: copy out/digital_twin_light.png to figures/digital_twin_light.png (use digital_twin_dark.png for slides) and
+% add out/references_additions.bib to your bibliography (\bibliography{...}).
+% Requires: \usepackage{graphicx}, \usepackage{textcomp} or any package providing \dag, and \usepackage{url}/hyperref.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/digital_twin_light.png}
+  \caption{Digital twin of the proposed AI-based DOFS perimeter security system for Makkah during Hajj.
+  The fibre follows the boundary of the Haram and Arafat and is coloured by vibration activity; bright segments
+  are light pulses launched by each interrogator unit (IU) along the fibre segment it serves. Dashed lines mark the
+  10\,km section covered by the simulated trace on the right. A walking intruder (red) and a vehicle on a road (amber)
+  are both detected because their activity exceeds the detection threshold. In the proposed system, an AI classifier
+  then decides: the intruder is classified as human and raises an alarm that sends the nearest UAV and patrol, whereas
+  the vehicle is classified as a vehicle on a road and is only logged (marked \dag{}). This classification step is
+  part of the proposed system and is not simulated. Shaded areas mark weak coverage, computed from terrain slope,
+  directional CCTV visibility and distance to roads. The inset enlarges the rectangle drawn on the map around the
+  Mashaer (Jamarat, Mina, Muzdalifah, Arafat); north is up in both views.
+  Fibre length and interrogator count are computed from the boundary geometry and the specification of the reference
+  interrogator~\cite{eoss_das_datasheet} (70\,km distance range per channel, one built-in channel):
+  $N_\mathrm{IU}=\lceil 145.5/(70\times 1)\rceil=3$. CCTV, UAV and patrol numbers and positions, the C2 location and the road
+  entry points used as checkpoint positions (marked \dag{}) are proposed placements, not real sites. UAV altitude and
+  cone size are not to scale, the vertical exaggeration is $2\times$, and the event hot spots on the fibre are
+  widened for visibility.
+  The trace is the output of the $\varphi$-OTDR simulation~\cite{das_simulation} for a 10\,km section with default
+  parameters, not measured data. Its walking event is the intruder on the map and its vehicle event is the vehicle;
+  the simulated digging event and calibration sine are not shown on the map. The detection threshold follows the
+  simulator's rule (median plus $8\times1.4826\times$ MAD of the activity).
+  Hajj 2026 pilgrim count: GASTAT~\cite{gastat2026hajjnews}.
+  Boundary and roads: OpenStreetMap contributors~\cite{osm_contributors}. Terrain: produced using Copernicus WorldDEM-30
+  \copyright{} DLR e.V. 2010--2014 and \copyright{} Airbus Defence and Space GmbH 2014--2018 provided under COPERNICUS by the
+  European Union and ESA; all rights reserved~\cite{copernicus_dem_glo30}.
+  Map image is the intellectual property of Esri and is used herein under license.
+  Copyright \copyright{} 2026 Esri and its licensors. All rights reserved.~\cite{esri_world_imagery}}
+  \label{fig:digital-twin}
+\end{figure}

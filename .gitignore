@@ -1,0 +1,34 @@
+# ---- Large raw / derived data (re-created by the code or re-downloaded; see data/SOURCES.md) ----
+data/dem/
+data/*_probe.json
+*.tif
+*.tiff
+*.mp4
+*.avi
+*.mov
+
+# ---- Generated outputs: keep only the approved deliverables ----
+out/*
+!out/digital_twin_light.png
+!out/digital_twin_dark.png
+!out/figure_snippet.tex
+!out/references_additions.bib
+
+# ---- Scratch / development helpers ----
+test/
+
+# ---- MATLAB temp files ----
+*.asv
+*.autosave
+*.m~
+slprj/
+*.mexw64
+*.mexa64
+*.mexmaci64
+*.slxc
+codegen/
+
+# ---- OS junk ----
+.DS_Store
+Thumbs.db
+desktop.ini
