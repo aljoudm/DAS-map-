@@ -1,6 +1,6 @@
 function T = export_sheet_values(m, outDir, Z)
 % EXPORT_SHEET_VALUES  Write results_febus/sheet_values.csv (UTF-8 with BOM, Excel-compatible) and print the same table.
-% Columns: Symbol | Description | Explanation | Value | Unit | Source | Owner | Status   (Status: Final | Assumed | Provisional | Preliminary | TBD | Proposed - not yet in Sheet)
+% Columns: Symbol | Description | Explanation | Value | Unit | Source | Owner | Status   (Status: Final | Approved | Assumed | Provisional | Preliminary | TBD | Proposed - not yet in Sheet). Values taken from the Sheet are never 'Final'.
 % The team Sheet's symbols are exported, plus 5 map results marked 'Proposed - not yet in Sheet' (N_DAS_int, N_ch_active,
 % P_DAS_total, L_leadin, L_channel). C_DAS_total is printed by map_params('report') only (C_total is the sum of all components, TBD here).
 if ~exist(outDir, 'dir'), mkdir(outDir); end
@@ -21,11 +21,11 @@ R = {
  'C_fiber','Fibre cost','Fibre cable cost per km of route (formula uses L in km)', m.C_fiber,'SAR/km','[TBD: Saudi source]','Team','TBD'
  'Pd_DAS','DAS detection probability','Detection probability of DAS, computed from simulated events vs detection threshold; threshold to be set from the FAR target (Student 1)', m.Pd_DAS,'-','[TBD: computed from simulation]','Simulation B (Monte Carlo using DAS-Simulation)','TBD'
  'Pc_DAS','DAS classification probability','Probability of correct classification (DL classifier)', m.Pc_DAS,'-','[TBD: Simulation A (DL classifier)]','Simulation A (DL classifier)','TBD'
- 'C_CCTV','CCTV cost','Cost per CCTV unit', m.C_CCTV,'SAR/unit','[SHEET: Student 2]',own2,'Final'
- 'Cov_CCTV','CCTV coverage','Coverage of one CCTV unit (the figure draws a separate ILLUSTRATIVE 1.4 km / 100 deg wedge)', m.Cov_CCTV,'m','[SHEET: Student 2]',own2,'Final'
- 'P_CCTV','CCTV power','Power per CCTV unit', m.P_CCTV,'W/unit','[SHEET: Student 2]',own2,'Final'
- 'Pd_CCTV','CCTV detection probability','Detection probability of CCTV', m.Pd_CCTV,'-','[SHEET: Student 2]',own2,'Final'
- 'Pc_CCTV','CCTV classification probability','Classification probability of CCTV', m.Pc_CCTV,'-','[SHEET: Student 2]',own2,'Final'
+ 'C_CCTV','CCTV cost','Cost per CCTV unit', m.C_CCTV,'SAR/unit','[SHEET: Student 2]',own2,'Preliminary'
+ 'Cov_CCTV','CCTV coverage','Coverage of one CCTV unit (the figure draws a separate ILLUSTRATIVE 1.4 km / 100 deg wedge)', m.Cov_CCTV,'m','[SHEET: Student 2]',own2,'Preliminary'
+ 'P_CCTV','CCTV power','Power per CCTV unit', m.P_CCTV,'W/unit','[SHEET: Student 2]',own2,'Preliminary'
+ 'Pd_CCTV','CCTV detection probability','Detection probability of CCTV', m.Pd_CCTV,'-','[SHEET: Student 2]',own2,'Preliminary'
+ 'Pc_CCTV','CCTV classification probability','Classification probability of CCTV', m.Pc_CCTV,'-','[SHEET: Student 2]',own2,'Preliminary'
  'C_drone','Drone cost','Cost per drone', m.C_drone,'SAR/unit','[SHEET: Student 2, proposal]',own2,'Preliminary'
  'Cov_drone','Drone coverage','Coverage radius of one drone (average DJI Dock 3 / Skydio Dock)', m.Cov_drone,'m (radius)','[SHEET: Student 2, proposal]',own2,'Preliminary'
  'P_drone','Drone power','Power per drone', m.P_drone,'W/unit','[SHEET: Student 2, proposal]',own2,'Preliminary'
@@ -49,8 +49,8 @@ R = {
  'P_DAS_total','Total interrogator power','PROPOSED new symbol: N_DAS_int * P_DAS (without shelter air-conditioning)', m.P_DAS_total,'W','[DERIVED]',me,prop
  'L_leadin','Lead-in fibre','PROPOSED new symbol: fibre from the air-conditioned shelter to the boundary, counted in every channel length (assumed 0: shelter on the boundary)', m.L_leadin,'m','[ASSUMED: shelter on boundary]',me,prop
  'L_channel','Sensing length per channel','PROPOSED new symbol: sensing fibre per channel = L_boundary / (N_DAS_int * N_ch_active) (about 18.18 km, below R_DAS = 20 km)', round(m.L_fibre / (m.N_DAS_int * m.N_ch_active), 1),'m','[DERIVED]',me,prop
- 'AD0','Detection target','Project target for the detection probability (approved)', m.AD0,'-','[SHEET: project target, approved]','Team','Final'
- 'AC0','Classification target','Project target for the classification probability (approved)', m.AC0,'-','[SHEET: project target, approved]','Team','Final'
+ 'AD0','Detection target','Project target for the detection probability (approved)', m.AD0,'-','[SHEET: project target, approved]','Team','Approved'
+ 'AC0','Classification target','Project target for the classification probability (approved)', m.AC0,'-','[SHEET: project target, approved]','Team','Approved'
  'N_cells','Number of boundary cells','PROPOSED new symbol: cells of side cell_size crossed by the boundary', Zv('nCells'),'-','[COMPUTED-ZONES]',ownZ,prop
  'N_cells_hot','Number of Hot cells','PROPOSED new symbol', Zv('nHot'),'-','[COMPUTED-ZONES]',ownZ,prop
  'N_cells_neutral','Number of Neutral cells','PROPOSED new symbol', Zv('nNeutral'),'-','[COMPUTED-ZONES]',ownZ,prop

@@ -92,6 +92,7 @@ m.zone_k         = 3;     % [CHOSEN: Cold / Neutral / Hot] k-means clusters on c
 m.zone_kmeans_replicates = 50;   % [CHOSEN] k-means replicates
 m.zone_seed      = 20261101;     % [SIM SETTING] fixed seed (same as cfg.seed)
 m.zone_smooth_sigma = 6;   % DEM pixels [ASSUMED: design] Gaussian smoothing of the risk grid, same as the figure's risk (compute_risk.m)
+m.min_cell_frac = 0.25;  % [CHOSEN] a cell whose boundary length is < min_cell_frac * cell_size is merged into the neighbour that continues the boundary (the one with the longer boundary share)
 m.zone_step_m    = 5;     % m [CHOSEN] boundary densification step for length-per-cell accounting
 m.C_total = NaN;                                                                                  % [TBD: team] needs all component costs
 
