@@ -59,6 +59,8 @@ m.Pd_DAS = NaN;  m.Pc_DAS = NaN;                                                
 m.C_CCTV = NaN;  m.Cov_CCTV = NaN;  m.P_CCTV = NaN;  m.Pd_CCTV = NaN;  m.Pc_CCTV = NaN;           % [TBD: Student 2]
 m.C_drone = NaN; m.Cov_drone = NaN; m.P_drone = NaN; m.T_drone = NaN;  m.Pd_drone = NaN;         % [TBD: Student 2]
 m.C_PS = NaN;    m.Cov_PS = NaN;    m.P_PS = NaN;    m.Pd_PS = NaN;                               % [TBD: Student 2]
+% NOTE: w_k (Sheet: Decision Matrix weights, Acc 35 / Cov 25 / Env 15 / Cost 10 / Pwr 10 / Priv 5 %) is NOT used by this repo (no zone
+% weighting here) and must not be used anywhere in the code. It only appears in sheet_values.csv; the value is owned by Student 2.
 m.w_k = NaN;  m.cell_size = NaN;  m.R_hot = NaN;  m.R_cold = NaN;                                 % [TBD: DAS-map zones (WIP)] zones are not in this repo
 m.lambda_hot = NaN;  m.lambda_neutral = NaN;  m.lambda_cold = NaN;                                % [TBD: DAS-map zones (WIP)]
 m.C_total = NaN;                                                                                  % [TBD: team] needs all component costs
