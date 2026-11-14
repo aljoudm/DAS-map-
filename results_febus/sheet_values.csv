@@ -27,4 +27,6 @@
 "lambda_hot","Hot-zone intrusion rate","Intrusion rate lambda in Hot cells (work in progress)","TBD","TBD","[TBD: DAS-map zones (WIP)]","DAS-map zones (WIP)","TBD"
 "lambda_neutral","Neutral-zone intrusion rate","Intrusion rate lambda in Neutral cells (work in progress)","TBD","TBD","[TBD: DAS-map zones (WIP)]","DAS-map zones (WIP)","TBD"
 "lambda_cold","Cold-zone intrusion rate","Intrusion rate lambda in Cold cells (work in progress)","TBD","TBD","[TBD: DAS-map zones (WIP)]","DAS-map zones (WIP)","TBD"
+"P_shelter","Shelter AC power","Air-conditioning power per interrogator shelter (interrogators max 40 degC)","TBD","W","[TBD: AC power per shelter]","Team","TBD"
+"P_total","Total power","P_DAS_total + N_DAS_int * P_shelter (known part without shelters: see console / README)","TBD","W","[DERIVED] needs P_shelter","Team","TBD"
 "C_total","Total cost","Sum of all component costs (DAS part: see README; needs C_DAS_int, C_fiber and the other components)","TBD","currency TBD","[TBD: team]","Team","TBD"

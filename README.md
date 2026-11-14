@@ -39,6 +39,8 @@ The interrogator is the **FEBUS A1-NEO** (datasheet rev. 20260618). All device, 
 | P_DAS | 170 | W | [DATASHEET] |
 | dz_res | 10 | m | [SIM SETTING] same as DAS-Simulation |
 | dz_samp | 2 | m | [SIM SETTING] channel spacing |
+| L_leadin | 0 | m | [ASSUMED: shelter on boundary; edit when site known]; counted in every channel's fibre length and in the assert |
+| P_shelter | TBD | W | [TBD: AC power per shelter] |
 | T_op_max | 40 | degC | [DATASHEET] |
 | C_DAS_int | TBD | currency / unit | [TBD: vendor quote] |
 | C_fiber | TBD | currency / km | [TBD: Saudi source]; the repo had no previous cost value |
@@ -48,6 +50,8 @@ The interrogator is the **FEBUS A1-NEO** (datasheet rev. 20260618). All device, 
 N_DAS_int   = ceil( L_boundary / (N_ch_active * R_DAS) )           = ceil(145.47 / 40) = 4
 P_DAS_total = N_DAS_int * P_DAS                                      = 680 W
 C_DAS_total = N_DAS_int * C_DAS_int + (L_boundary/1e3) * C_fiber     (C_fiber per km)
+P_total     = P_DAS_total + N_DAS_int * P_shelter                    (P_shelter TBD -> reported as incomplete)
+channel fibre = L_leadin + sensing length  <=  R_DAS   (assert; margin per channel is printed)
 ```
 Missing terms never produce a silent NaN: `map_params('report')` prints `<symbol> = TBD (<owner>)` and the total twice
 (known terms only / missing terms). Zone symbols (`R_hot`, `lambda_*`, ...), CCTV / drone / point-sensor and `Pd_*`/`Pc_*` values are not in this repo; they are TBD overrides.
@@ -63,6 +67,11 @@ The first version assumed 4 segments per site (N = 2); that needed up to 30.4 km
 and gives it two sensing channels of half an arc each. An `assert` fails if any channel's lead-in + sensing fibre exceeds R_DAS; if it
 would, sites are added until it passes and the extra count is reported (`m.N_DAS_int_extra`). Result: 4 sites, 8 channels of 18.18 km each.
 `results_febus/placement_plan.png` shows it. Lead-in from a shelter to the boundary is not modelled (sites are on the boundary).
+
+**Trace panel:** the map's trace panel is now the analytic backscatter of ONE channel (length = actual channel fibre length, 18.18 km), from
+`backscatter_power.m` and the parameters in `map_params.m` (P0 = 0.1 W [ASSUMED: Thevenaz 2025], R_bs = -82 dB [ASSUMED: Corning SMF-28 Ultra PI-1424],
+n_g = 1.4682 [ASSUMED: Corning], alpha = 0.2 dB/km [DATASHEET], tau = 2 n_g dz_res / c = 97.9 ns). Check: 61.8 nW at z = 0, 9.8 nW at 20 km.
+The event hot spots, the dashed "simulated section" and the walking/vehicle labels on the 3D map still come from the OLD 10 km simulation (re-import pending).
 
 `main_static` also writes `results_febus/sheet_values.csv` (Sheet columns Symbol ... Status), figures (png 300 dpi + pdf) and `placement_plan`.
 

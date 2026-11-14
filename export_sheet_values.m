@@ -34,6 +34,8 @@ R = {
  'lambda_hot','Hot-zone intrusion rate','Intrusion rate lambda in Hot cells (work in progress)', m.lambda_hot,'TBD','[TBD: DAS-map zones (WIP)]',ownZ,'TBD'
  'lambda_neutral','Neutral-zone intrusion rate','Intrusion rate lambda in Neutral cells (work in progress)', m.lambda_neutral,'TBD','[TBD: DAS-map zones (WIP)]',ownZ,'TBD'
  'lambda_cold','Cold-zone intrusion rate','Intrusion rate lambda in Cold cells (work in progress)', m.lambda_cold,'TBD','[TBD: DAS-map zones (WIP)]',ownZ,'TBD'
+ 'P_shelter','Shelter AC power','Air-conditioning power per interrogator shelter (interrogators max 40 degC)', m.P_shelter,'W','[TBD: AC power per shelter]','Team','TBD'
+ 'P_total','Total power','P_DAS_total + N_DAS_int * P_shelter (known part without shelters: see console / README)', m.P_total,'W','[DERIVED] needs P_shelter','Team','TBD'
  'C_total','Total cost','Sum of all component costs (DAS part: see README; needs C_DAS_int, C_fiber and the other components)', m.C_total,'currency TBD','[TBD: team]','Team','TBD'
 };
 T = cell2table(R, 'VariableNames', {'Symbol','Description','Explanation','Value','Unit','Source','Owner','Status'});

@@ -1,50 +1,31 @@
 function h = draw_trace(fig, pos, scene)
-% DRAW_TRACE  DAS trace panel: output of the phi-OTDR simulation (main.m defaults, 10 km section). The mapping to the map is
-% stated under the plot: walking = map intruder, vehicle = map vehicle; digging and the calibration sine are simulated only
-% (not placed on the map, neutral colour). Returns the plot axes and marker handles of the walking / vehicle peaks.
-cfg = scene.cfg;  th = scene.th;  sim = scene.sim;  fn = cfg.font;  ks = cfg.uiScale;
+% DRAW_TRACE  Analytic Rayleigh-backscatter trace of ONE FEBUS channel (length = actual channel fibre length), same model as
+% DAS-Simulation: P_bs(z) = P0 * 10^((R_bs_dB + 10 log10(tau/1 ns))/10) * 10^(-2 alpha z/1e4). Parameters: map_params.m.
+% Returns the plot axes (no event markers: the analytic trace carries no simulated events).
+cfg = scene.cfg;  th = scene.th;  m = cfg.m;  fn = cfg.font;  ks = cfg.uiScale;  F = scene.fibre;
 bg = panel_axes(fig, pos, th, ks);
 hin = pos(4) * cfg.figSizeIn(2) / ks;                             % design inches
 u = ks / cfg.figSizeIn(2);                                         % normalised height of one design inch
-text(bg, 0.05, 1 - 0.12 / hin, [char(966) '-OTDR SIMULATION'], 'Color', th.muted, 'FontName', fn.name, 'FontSize', fn.title.size, ...
+text(bg, 0.05, 1 - 0.12 / hin, 'BACKSCATTER, ONE CHANNEL (ANALYTIC)', 'Color', th.muted, 'FontName', fn.name, 'FontSize', fn.title.size, ...
     'FontWeight', 'bold', 'VerticalAlignment', 'middle');
 axBottom = pos(2) + 0.68 * u;   axTop = pos(2) + pos(4) - 0.30 * u;
 ax = axes(fig, 'Position', [pos(1) + 0.15 * pos(3), axBottom, 0.80 * pos(3), axTop - axBottom], 'Color', 'none');
 ax.Tag = 'panel';   hold(ax, 'on');
-z = sim.z / 1e3;   a = sim.a;
-patch(ax, [z; flipud(z)], [a; zeros(size(a))], th.trace, 'FaceAlpha', 0.16, 'EdgeColor', 'none');
-plot(ax, z, a, '-', 'Color', th.trace, 'LineWidth', 0.5 * ks);
-yline(ax, sim.thr, '--', 'Color', th.thr, 'LineWidth', 0.7 * ks);
-text(ax, 9.9, sim.thr + 0.4, 'threshold', 'Color', th.thr, 'FontName', fn.name, 'FontSize', fn.note.size, ...
-    'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
-ymax = max(a) * 1.30;   h = struct('ax', ax);
-for i = 1:numel(sim.events)
-    ev = sim.events(i);
-    switch ev.type
-        case "walk",    col = th.intLbl;   lab = "walking";
-        case "vehicle", col = th.aniLbl;   lab = "vehicle";
-        case "dig",     col = th.muted;    lab = "digging";
-        otherwise,      col = th.muted;    lab = "calibration";
-    end
-    hm = plot(ax, ev.z0 / 1e3, ev.peak_nm, 'o', 'MarkerSize', 2.8 * ks, 'MarkerFaceColor', col, 'MarkerEdgeColor', 'none');
-    if ev.type == "walk", h.walk = [ev.z0 / 1e3, ev.peak_nm]; elseif ev.type == "vehicle", h.veh = [ev.z0 / 1e3, ev.peak_nm]; end
-    text(ax, ev.z0 / 1e3, ev.peak_nm + 0.025 * ymax, lab, 'Color', col, 'FontName', fn.name, 'FontSize', fn.note.size, ...
-        'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
-    clear hm
-end
-xlim(ax, [0 10]);   ylim(ax, [0 ymax]);   xticks(ax, 0:2:10);   yticks(ax, 0:10:20);
+Lch = max(F.segNeedKm);                                            % channel fibre length [km] (lead-in + sensing)
+zk = linspace(0, Lch, 400)';   a = backscatter_power(m, zk * 1e3) * 1e9;     % [nW]
+patch(ax, [zk; flipud(zk)], [a; zeros(size(a))], th.trace, 'FaceAlpha', 0.16, 'EdgeColor', 'none');
+plot(ax, zk, a, '-', 'Color', th.trace, 'LineWidth', 1.0 * ks);
+h = struct('ax', ax);
+xlim(ax, [0 Lch]);   ylim(ax, [0 ceil(max(a) / 10) * 10]);   xticks(ax, 0:5:floor(Lch));   yticks(ax, 0:20:100);
 ax.FontName = fn.name;   ax.FontSize = fn.note.size;   ax.XColor = th.muted;   ax.YColor = th.muted;
 ax.LineWidth = 0.5 * ks;   ax.TickDir = 'out';   ax.Box = 'off';   ax.YGrid = 'on';   ax.GridColor = th.grid;   ax.GridAlpha = 0.6;
-xlabel(ax, 'Distance (km)', 'Color', th.muted, 'FontSize', fn.note.size);
-ylabel(ax, 'Activity (nm rms)', 'Color', th.muted, 'FontSize', fn.note.size);
-% mapping rows (design inches from the panel bottom)
-ar = char(8594);   dg = char(8224);
-rows = {th.intLbl,  ['walking = map intruder: detected ' ar ' human ' ar ' ALARM ' dg];
-        th.aniLbl,  ['vehicle = map vehicle: detected ' ar ' on road ' ar ' logged ' dg];
-        th.muted,   'digging, calibration: simulated only, not on the map'};
+xlabel(ax, 'Distance along channel (km)', 'Color', th.muted, 'FontSize', fn.note.size);
+ylabel(ax, 'Power (nW)', 'Color', th.muted, 'FontSize', fn.note.size);
+rows = {sprintf('channel length %.2f km, pulse %.1f ns (dz = %g m), loss %g dB/km', Lch, m.tau * 1e9, m.dz_res, m.alpha_dB_km);
+        sprintf('P0 = %g W, R_bs = %g dB: assumed values (map_params.m)', m.P0, m.R_bs_dB);
+        sprintf('P(0) = %.1f nW, P(%.1f km) = %.1f nW', a(1) , Lch, a(end))};
 for k = 1:3
     yy = 0.33 - (k - 1) * 0.12;
-    plot(bg, 0.06, yy / hin, 'o', 'MarkerSize', 3 * ks, 'MarkerFaceColor', rows{k, 1}, 'MarkerEdgeColor', 'none');
-    text(bg, 0.10, yy / hin, rows{k, 2}, 'Color', th.text, 'FontName', fn.name, 'FontSize', fn.note.size, 'VerticalAlignment', 'middle');
+    text(bg, 0.06, yy / hin, rows{k}, 'Color', th.text, 'FontName', fn.name, 'FontSize', fn.note.size, 'VerticalAlignment', 'middle', 'Interpreter', 'none');
 end
 end

@@ -19,6 +19,7 @@ m.C_drone_override = NaN;  m.Cov_drone_override = NaN;  m.P_drone_override = NaN
 m.C_PS_override    = NaN;  m.Cov_PS_override    = NaN;  m.P_PS_override    = NaN;  m.Pd_PS_override   = NaN;                            % owner: Student 2 (point sensors)
 m.w_k_override = NaN;  m.cell_size_override = NaN;  m.R_hot_override = NaN;  m.R_cold_override = NaN;                                    % owner: DAS-map zones (WIP)
 m.lambda_hot_override = NaN;  m.lambda_neutral_override = NaN;  m.lambda_cold_override = NaN;                                            % owner: DAS-map zones (WIP)
+m.P_shelter_override = NaN;                                   % owner: Team (AC power per shelter)
 m.C_total_override = NaN;                                                                                                                % owner: team (sum of all components)
 
 % ----- [DATASHEET] FEBUS A1-NEO (datasheet rev. 20260618) -----
@@ -40,6 +41,18 @@ m.T_op_max  = 40;    % max operating temperature [degC] -> interrogators must be
 m.C_DAS_int = NaN;   % [TBD: vendor quote] interrogator unit price, not in datasheet. Unit: per interrogator (currency TBD)
 m.C_fiber   = NaN;   % [TBD: Saudi source] fibre cable cost PER KM (formula below uses L in km). The previous repo had NO cost
                      % value, so there was nothing to keep; [ASSUMED: no source] until a Saudi price is entered.
+
+% ----- Lead-in and shelter power -----
+m.L_leadin  = 0;     % [ASSUMED: shelter on boundary; edit when site known] lead-in fibre from AC shelter to boundary [m], counted in every channel's fibre length
+m.P_shelter = NaN;   % [TBD: AC power per shelter] air-conditioning power per shelter [W]
+
+% ----- Backscatter trace of ONE channel (analytic; same model as DAS-Simulation) -----
+m.P0         = 0.1;     % [ASSUMED: Thevenaz 2025] launched peak power [W]
+m.R_bs_dB    = -82;     % [ASSUMED: Corning SMF-28 Ultra PI-1424] Rayleigh backscatter coefficient [dB] (for a 1 ns pulse)
+m.n_g        = 1.4682;  % [ASSUMED: Corning SMF-28 Ultra] group index
+m.c_light    = 299792458;   % [m/s] speed of light
+m.alpha_dB_km = 0.2;    % [DATASHEET] FEBUS A1-NEO fibre loss assumed by the range spec [dB/km]
+m.tau        = 2 * m.n_g * m.dz_res / m.c_light;   % [DERIVED] pulse width [s] = 2 n_g dz_res / c  (~97.9 ns at 10 m)
 
 % ----- Values owned by others (not yet received): [TBD: owner] -----
 m.Pd_DAS = NaN;  m.Pc_DAS = NaN;                                                                  % [TBD: DAS-Simulation] / [TBD: Simulation A (DL classifier)]
@@ -82,6 +95,11 @@ m.L_boundary  = ring_length_m(m.L_boundary_source);          % [m] haversine sum
 m.L_fibre     = m.L_boundary * m.slack_factor;               % [m] = L_boundary while slack_factor = 1.00
 m.N_DAS_int   = ceil(m.L_fibre / (m.N_ch_active * m.R_DAS)) + m.N_DAS_int_extra;   % [DERIVED] number of interrogators
 m.P_DAS_total = m.N_DAS_int * m.P_DAS;                       % [DERIVED] [W]
+% P_total = P_DAS_total + N_DAS_int * P_shelter  (shelter AC power TBD -> reported as incomplete, never a silent NaN)
+m.P_total_known    = m.P_DAS_total + (~isnan(m.P_shelter)) * m.N_DAS_int * max(m.P_shelter, 0);
+m.P_total_missing  = {};  if isnan(m.P_shelter), m.P_total_missing = {'P_shelter'}; end
+m.P_total_complete = isempty(m.P_total_missing);
+m.P_total          = m.P_total_known;  if ~m.P_total_complete, m.P_total = NaN; end
 % Cost: C_DAS_total = N_DAS_int*C_DAS_int + (L/1e3)*C_fiber ; C_DAS_int per unit, C_fiber per KM (L converted m -> km).
 terms = {'C_DAS_int', m.N_DAS_int * m.C_DAS_int; 'C_fiber', (m.L_fibre / 1e3) * m.C_fiber};
 okT = ~isnan(cell2mat(terms(:, 2)));
@@ -120,6 +138,13 @@ fprintf('L_boundary    = %.1f m (%.3f km)   [COMPUTED-MAP, %s]\n', m.L_boundary,
 fprintf('N_DAS_int     = %d   = ceil(L / (N_ch_active x R_DAS)) + %d extra = ceil(%.3f / (%d x %.0f km)) + %d\n', m.N_DAS_int, m.N_DAS_int_extra, m.L_fibre / 1e3, m.N_ch_active, m.R_DAS / 1e3, m.N_DAS_int_extra);
 fprintf('Channels        : %d per interrogator = %d active (one per direction) + %d spare\n', m.N_ch_DAS, m.N_ch_active, m.N_ch_spare);
 fprintf('P_DAS_total   = %g W   (%d x %g W)\n', m.P_DAS_total, m.N_DAS_int, m.P_DAS);
+if isnan(m.P_shelter), fprintf('P_shelter = TBD (AC power per shelter)\n'); else, fprintf('P_shelter = %g W\n', m.P_shelter); end
+if m.P_total_complete, fprintf('P_total (a) all terms            : %g W\n', m.P_total_known);
+else, fprintf('P_total (a) known terms only     : %g W   (P_DAS_total only)\n', m.P_total_known); end
+if m.P_total_complete, fprintf('P_total (b) missing terms        : none\n');
+else, fprintf('P_total (b) missing terms        : %s  -> total INCOMPLETE\n', strjoin(m.P_total_missing, ', ')); end
+P1 = backscatter_power(m, 0);  P2 = backscatter_power(m, 20e3);
+fprintf('Backscatter P_bs (tau = %.1f ns): %.1f nW at z = 0, %.1f nW at 20 km  [sanity: ~62 / ~10 nW]\n', m.tau * 1e9, P1 * 1e9, P2 * 1e9);
 for s = {'C_DAS_int', 'C_fiber'}
     if isnan(m.(s{1})), fprintf('%s = TBD (%s)\n', s{1}, owner.(s{1})); else, fprintf('%s = %g\n', s{1}, m.(s{1})); end
 end

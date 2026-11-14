@@ -371,12 +371,12 @@ start(tmr);
         draw_status(fig, statusPos, scene);
         hTrace = draw_trace(fig, tracePos, scene);
         draw_legend(fig, legendPos, scene, 2, true);
-        for q = 1:2   % rings that mark the two simulated events the map shows, switched on when they are detected
+        for q = 1:2 * isfield(hTrace, 'walk')   % rings that mark simulated events on the trace (none on the analytic trace)
             if q == 1, pk = hTrace.walk; col = th.intLbl; else, pk = hTrace.veh; col = th.aniLbl; end
             hRing(q) = plot(hTrace.ax, pk(1), pk(2), 'o', 'MarkerSize', 7.5 * ks, 'MarkerFaceColor', 'none', 'MarkerEdgeColor', col, ...
                 'LineWidth', 1.2 * ks, 'Visible', 'off');
         end
-        hTrace.ringW = hRing(1);   hTrace.ringV = hRing(2);
+        if isfield(hTrace, 'walk'), hTrace.ringW = hRing(1);   hTrace.ringV = hRing(2); end
         delete(findobj(fig, 'Tag', 'north'));
         north_arrow(oa, [0.03 0.50], 0.11, th.text, th.bg, cfg);
     end

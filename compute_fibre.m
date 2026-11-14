@@ -33,11 +33,12 @@ fibre.N_samples   = round(L_m / cfg.CH_SPACING_M);    % channel samples = L / ch
 
 % Placement (two directions per site): each interrogator uses N_ch_active = 2 channels, one in each direction along the
 % boundary; channels 3-4 are spare (redundancy / possible double coverage in Hot zones) and get NO sensing segment.
-% The ring is split into N equal arcs, the site sits at the middle of its arc (ON the boundary, so lead-in = 0) and each of
+% The ring is split into N equal arcs, the site sits at the middle of its arc (lead-in = m.L_leadin, 0 while the shelter is on the boundary) and each of
 % its two channels senses half an arc. Every channel's total fibre = lead-in + sensing length must be <= R_DAS; if the
 % geometry fails this, sites are added until it passes (and the extra count is reported).
 nact = cfg.N_CH_ACTIVE;  N = cfg.m.N_DAS_int;
 at = @(u) 1 + mod(round(u * n), n);                       % index on the closed ring for arc fraction u (0..1)
+assert(cfg.m.L_leadin / 1e3 < cfg.R_CH_KM, 'Lead-in (%.2f km) leaves no sensing range within R_DAS = %g km.', cfg.m.L_leadin / 1e3, cfg.R_CH_KM);
 while true
     nSeg = N * nact;
     site = zeros(N, 1);  sa = zeros(nSeg, 1);  sb = sa;  sSite = sa;  nearIdx = sa;  farIdx = sa;  dirn = sa;  leadin = sa;
@@ -49,7 +50,7 @@ while true
             if j == 1, nearIdx(q) = at(ub); farIdx(q) = at(ua); dirn(q) = -1;   % channel 1: one direction from the site
             else,      nearIdx(q) = at(ua); farIdx(q) = at(ub); dirn(q) = +1; end   % channel 2: the other direction
             sa(q) = ua * fibre.L_km;  sb(q) = ub * fibre.L_km;  sSite(q) = g;
-            leadin(q) = 0;                                  % the segment starts at the site (on the boundary)
+            leadin(q) = cfg.m.L_leadin / 1e3;               % lead-in fibre shelter -> boundary [km] (0 while the shelter is on the boundary)
         end
     end
     need = (sb - sa) + leadin;                              % total fibre per channel [km]
@@ -57,6 +58,8 @@ while true
     N = N + 1;                                              % geometry fails: add a site
 end
 extra = N - cfg.m.N_DAS_int;
+fibre.segMarginKm = cfg.R_CH_KM - need;                   % remaining range margin per channel [km]
+fprintf('Channel margin  : R_DAS - (lead-in + sensing) per channel [km]: %s\n', strjoin(compose('%.2f', fibre.segMarginKm(:)'), ', '));
 if extra > 0, warning('PLACEMENT:EXTRA', 'Placement needed %d extra interrogator(s): set m.N_DAS_int_extra = %d in map_params.m.', extra, extra); end
 assert(all(need <= cfg.R_CH_KM + 1e-9), 'A sensing channel exceeds R_DAS (%.2f km > %g km).', max(need), cfg.R_CH_KM);
 fibre.N_IU = N;  fibre.nSeg = nSeg;  fibre.N_ch_spare = cfg.m.N_ch_spare;
