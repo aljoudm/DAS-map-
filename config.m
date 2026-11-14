@@ -52,7 +52,7 @@ cfg.insetMargin_km = 1.8;             % minimum margin between these sites and t
 cfg.insetMarginTop_km = 4.2;          % top margin (screen km) so the site labels above the northern site stay inside
 cfg.insetSearchLat = [21.275 21.48];  % where the rectangle edges may be placed
 cfg.insetSearchLon = [39.825 40.035];
-cfg.simFile = fullfile(cfg.dataDir, 'das_sim', 'das_sim_main_default.mat');   % phi-OTDR output (see SOURCES.md)
+cfg.simFile = fullfile(cfg.dataDir, 'das_sim', 'das_sim_febus.mat');   % phi-OTDR output (see SOURCES.md)
 
 % --- 3D terrain / imagery (prepare_terrain.m) -------------------------------
 cfg.aoiMargin   = 0.05;     % deg of context around the perimeter bounding box

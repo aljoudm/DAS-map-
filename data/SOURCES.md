@@ -47,6 +47,9 @@ Pending: DEM (Copernicus GLO-30), OSM road network, Hajj-entry restriction offic
 ## Facts used on the figure
 Hajj 2026 pilgrims 1,707,301 (GASTAT, Hajj Statistics Report 1447H). Fibre length, N_IU, sensing points and area are computed (see above).
 
+## History (superseded): old 10 km phi-OTDR import and EOSS device
+Everything from here to the FEBUS section at the end of this file describes the OLD import (DAS-Simulation commit e6120c8, 10 km, 100 ns, file `data/das_sim/das_sim_main_default.mat`, kept unchanged) and the EOSS reference device. It is kept for history; the map now uses the FEBUS import described in the last section.
+
 ## Added 2026-11-01 (review 4): phi-OTDR trace, directional risk, removals
 
 ### DAS trace panel (replaces the illustrative signal)
@@ -88,3 +91,12 @@ File: https://asean.prysmian.com/sites/asean.prysmian.com/files/media/documents/
 
 ## FEBUS A1-NEO update (branch febus-a1neo)
 The reference device is now the FEBUS A1-NEO (datasheet rev. 20260618): 20 km per channel, 4 channels, 170 W, 10 m resolution, 2 m channel spacing (see `map_params.m`). The EOSS statements above (70 km, 1 channel, 20 m, N_IU = 3) describe the previous device and are kept for history. The imported phi-OTDR trace (`data/das_sim/`) is still the OLD simulation (10 km, 100 ns pulse); re-import from DAS-Simulation branch `febus-a1neo` is pending.
+
+## Current DAS simulation import (FEBUS A1-NEO)
+- **Source:** github.com/aljoudm/DAS-Simulation, branch `febus-a1neo`, **commit `ad3d39a476d6ef69f43163236a94f6e872ec0d26`** (working tree clean), script `main.m`, outputs `results_febus/results.mat` (made 2026-11-14). Imported with `data/import_das_sim.m` into **`data/das_sim/das_sim_febus.mat`**; no simulated number was altered.
+- **Parameters actually used** (read from `results.mat`, `P`): fibre 20 km, pulse 97.9 ns (10.00 m resolution), PRF 4,594 Hz, 9,188 pulses (2 s), detector SNR 34.8 dB at the fibre start, gauge length 20 m, seed 42. Events from `src/define_events.m`: sine 100 Hz at 4 km (calibration), walking at 8 km, digging at 12 km, vehicle at 16 km.
+- **Peaks (nm rms, activity > ~5 Hz, +-60 m window):** sine 21.1, walking 8.38, digging 11.6, vehicle 9.92. Median background (full 20 km) 2.01 nm.
+- **Detection threshold (simulator's rule, median + 8 x 1.4826 x MAD):** over the full 20 km profile 8.53 nm, **under which walking (8.38 nm) would NOT be detected**. Decision by the project lead: the rule is evaluated over the ONE FEBUS channel the system monitors (z <= 18.18 km): median 1.93 nm, **threshold 7.96 nm** (`build_scene.m`; the full-profile value is kept as `sim.thr_full`). All four events exceed 7.96 nm (walking by only 0.42 nm, so it is a marginal detection).
+- **Mapping:** the simulated section is laid on ONE physical channel (18.18 km, z = 0 at the interrogator end, channel 2 of the placement). The simulation is 20 km, so the last 1.8 km are not shown; all events (max z = 16.0 km + 15 m) lie inside the channel. Walking = highest-risk walking position among the 8 channels, vehicle 8 km further along (same spacing as simulated), snapped to the nearest major road (OSM, within 0.15-0.6 km). Classification (human / vehicle) and ALARM are the proposed system and are NOT simulated (marked with a dagger).
+- **Colour scale:** reference = largest field-event peak (digging, 11.6 nm); fibre quiet level = median 1.93 nm; hot-spot width (sigma 0.8 km) is a display widening.
+- **Still pending:** the Pc_DAS / Pd_DAS values for the Sheet are not derived from this run.
