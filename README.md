@@ -75,6 +75,56 @@ The event hot spots, the dashed "simulated section" and the walking/vehicle labe
 
 `main_static` also writes `results_febus/sheet_values.csv` (Sheet columns Symbol ... Status), figures (png 300 dpi + pdf) and `placement_plan`.
 
+## Zones
+
+`main_zones` classifies the boundary into Hot / Neutral / Cold cells and produces these Sheet values: `cell_size`, `R_hot`, `R_cold`, per-cell lambda and
+the number of cells per zone. Every decision is a parameter in `map_params.m` with a tag, so it can be changed in one line. Outputs are in `results_zones/`
+(`cells.csv`, `zone_cells_map`, `risk_histogram`, `sensitivity.csv`) and the zone rows of `results_febus/sheet_values.csv`.
+
+**Method**
+1. **Grid:** square cells of side `cell_size` on a local metric projection; only cells crossed by the boundary are kept (intrusions are detected and stopped at the boundary). The boundary length per cell is accumulated on a 5 m densified line.
+2. **Intrinsic risk** (terrain + roads only, **no CCTV visibility term**: camera placement is an optimisation output, so using it would be circular): `risk = w_slope*slope_norm + w_road*road_dist_norm` on the 30 m DEM grid, smoothed like the figure's risk. The weights are the figure's (0.40 / 0.25) renormalised to sum 1 (0.615 / 0.385). The figure's own risk (with CCTV) is unchanged.
+3. **Cell risk** = 90th percentile of the grid risk values inside the cell (the intruder picks the easiest point; P90 is robust to single outliers).
+4. **Thresholds:** k-means (k = 3, fixed seed, 50 replicates) on cell risk; `R_cold` = midpoint of the low and middle centres, `R_hot` = midpoint of the middle and high centres. Cold < R_cold <= Neutral < R_hot <= Hot. The thresholds come from the data distribution, not from imposed shares.
+5. **Per-cell lambda:** the Sheet lambda is per ZONE per day; it is spread over the cells of the zone in proportion to cell risk, `lambda_cell = lambda_zone * risk_cell / sum(risk of the zone's cells)`, so the total does not change with `cell_size`. `cells.csv` gives min / mid / max (the Monte Carlo will draw the zone lambda uniformly from its range).
+
+**Parameters (`map_params.m`)**
+
+| Parameter | Value | Tag |
+| --- | --- | --- |
+| cell_size | 1000 m | [CHOSEN: >= Cov_CCTV (100 m, ~10 cameras per cell), >> DAS resolution (10 m); drones (11 km radius) are a shared resource across many cells] |
+| cell_size_sens | 500 / 1000 / 2000 m | [CHOSEN: sensitivity runs] |
+| zone_w (slope, road) | 0.615 / 0.385 | [ASSUMED: design; to be replaced by Student 3 Risk Matrix] |
+| cell_risk_pct | 90 | [CHOSEN] |
+| zone_k, replicates, seed | 3, 50, 20261101 | [CHOSEN] / [SIM SETTING] |
+| lambda_hot / neutral / cold range | 11-20 / 8-10 / 0-0 events/day per zone | [SHEET: team assumption] |
+
+Values taken from the team Sheet are tagged `[SHEET: Student 2]` (CCTV: Cov 100 m, C 1900.90 SAR, P 20 W, Pd 0.909, Pc 0.85; drone, all "proposal": Cov 11 km radius, T 47 min, C 148887 SAR, P 1500 W, Pd 0.885) or `[SHEET: project target, approved]` (AD0 = AC0 = 0.98).
+`C_DAS_int` = 150000 EUR (vendor meeting, Student 2) x 4.24 SAR/EUR [ASSUMED: interbank rate 15 Oct 2026; update] = 636000 SAR.
+**Not taken (left TBD):** `C_fiber` (flagged doubtful by the team), FAR (two conflicting Sheet entries), the Sheet `f_s = 100 kHz` (a pulse-repetition rate, a different quantity from our 51 MHz spatial sampling) and the point-sensor values.
+
+**Results (cell_size = 1 km)**
+
+| | Hot | Neutral | Cold | Total |
+| --- | --- | --- | --- | --- |
+| cells | 50 | 55 | 49 | 154 |
+| boundary (km) | 48.8 | 51.7 | 45.0 | 145.5 |
+
+`R_cold` = 0.251, `R_hot` = 0.443 (k-means centres 0.144 / 0.359 / 0.528).
+
+| cell_size | cells | Hot / Neutral / Cold | R_hot | R_cold |
+| --- | --- | --- | --- | --- |
+| 500 m | 325 | 88 / 127 / 110 | 0.439 | 0.236 |
+| 1000 m | 154 | 50 / 55 / 49 | 0.443 | 0.251 |
+| 2000 m | 74 | 28 / 21 / 25 | 0.455 | 0.278 |
+
+**Limitations**
+- The zoning weights are assumed (design) until Student 3's Risk Matrix replaces them.
+- The risk score is a proxy for intrusion frequency; there is no historical intrusion data.
+- The Arafat part of the boundary is provisional (OSM administrative district), so cells and zone lengths there may change.
+- `lambda_cold_range = [0 0]`: Cold cells never get simulated intrusions, so performance in Cold zones cannot be evaluated (`main_zones` prints a WARNING; the value is not changed).
+- k-means with k = 3 always returns three zones, whatever the shape of the distribution (the histogram shows no clear gap at 0.25).
+
 ## Interactive version and video
 
 ```matlab

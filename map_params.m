@@ -20,6 +20,7 @@ m.C_PS_override    = NaN;  m.Cov_PS_override    = NaN;  m.P_PS_override    = NaN
 m.w_k_override = NaN;   % owner: Student 2 (Decision Matrix weights, not used by this repo)
 m.cell_size_override = NaN;  m.R_hot_override = NaN;  m.R_cold_override = NaN;   % owner: DAS-map zones (WIP)
 m.lambda_hot_override = NaN;  m.lambda_neutral_override = NaN;  m.lambda_cold_override = NaN;                                            % owner: DAS-map zones (WIP)
+m.C_DAS_int_EUR_override = NaN;  m.fx_EUR_SAR_override = NaN;   % vendor price [EUR] / exchange rate (update when quoted)
 m.P_shelter_override = NaN;                                   % owner: Team (AC power per shelter)
 m.C_total_override = NaN;                                                                                                                % owner: team (sum of all components)
 
@@ -39,9 +40,11 @@ m.T_op_max  = 40;    % max operating temperature [degC] -> interrogators must be
                      % air-conditioned shelters; only the cable is in the field
 
 % ----- Cost/price values -----
-m.C_DAS_int = NaN;   % [TBD: vendor quote] interrogator unit price, not in datasheet. Unit: per interrogator (currency TBD)
-m.C_fiber   = NaN;   % [TBD: Saudi source] fibre cable cost PER KM (formula below uses L in km). The previous repo had NO cost
-                     % value, so there was nothing to keep; [ASSUMED: no source] until a Saudi price is entered.
+m.C_DAS_int_EUR = 150000;      % EUR/unit [SHEET: Student 2, from vendor meeting] interrogator price (not in datasheet)
+m.fx_EUR_SAR    = 4.24;        % SAR per EUR [ASSUMED: interbank rate 15 Oct 2026; update]
+m.C_DAS_int     = m.C_DAS_int_EUR * m.fx_EUR_SAR;   % [DERIVED] SAR/unit (recomputed after the overrides below)
+m.C_fiber   = NaN;   % [TBD: Saudi source] fibre cable cost PER KM (formula below uses L in km). NOT taken from the Sheet: the team flagged
+                     % the Sheet value as doubtful; stays TBD until a Saudi price is confirmed. SAR/km.
 
 % ----- Lead-in and shelter power -----
 m.L_leadin  = 0;     % [ASSUMED: shelter on boundary; edit when site known] lead-in fibre from AC shelter to boundary [m], counted in every channel's fibre length
@@ -57,14 +60,39 @@ m.tau        = 2 * m.n_g * m.dz_res / m.c_light;   % [DERIVED] pulse width [s] =
 
 % ----- Values owned by others (not yet received): [TBD: owner] -----
 m.Pd_DAS = NaN;  m.Pc_DAS = NaN;                                                                  % [TBD: DAS-Simulation] / [TBD: Simulation A (DL classifier)]
-m.C_CCTV = NaN;  m.Cov_CCTV = NaN;  m.P_CCTV = NaN;  m.Pd_CCTV = NaN;  m.Pc_CCTV = NaN;           % [TBD: Student 2]
-m.C_drone = NaN; m.Cov_drone = NaN; m.P_drone = NaN; m.T_drone = NaN;  m.Pd_drone = NaN;         % [TBD: Student 2]
+% --- values taken from the team Sheet (Sheet status kept in the comment) ---
+m.Cov_CCTV  = 100;     % m        [SHEET: Student 2] (the figure's illustrative 1.4 km camera wedge, cam_range_km, is a separate design value)
+m.C_CCTV    = 1900.90; % SAR/unit [SHEET: Student 2]
+m.P_CCTV    = 20;      % W/unit   [SHEET: Student 2]
+m.Pd_CCTV   = 0.909;   m.Pc_CCTV = 0.85;   % [SHEET: Student 2]
+m.Cov_drone = 11e3;    % m radius [SHEET: Student 2, proposal] avg DJI Dock 3 / Skydio Dock
+m.T_drone   = 47;      % min      [SHEET: Student 2, proposal]
+m.C_drone   = 148887;  % SAR/unit [SHEET: Student 2, proposal]
+m.P_drone   = 1500;    % W/unit   [SHEET: Student 2, proposal]
+m.Pd_drone  = 0.885;   % [SHEET: Student 2, proposal]
+m.AD0 = 0.98;  m.AC0 = 0.98;   % [SHEET: project target, approved] detection / classification targets
+% NOT taken from the Sheet (left TBD): C_fiber (flagged doubtful by the team); FAR (two conflicting Sheet entries); Sheet f_s = 100 kHz
+% (a pulse-repetition rate, different quantity from our 51 MHz spatial sampling); point-sensor values (TBD).
 m.C_PS = NaN;    m.Cov_PS = NaN;    m.P_PS = NaN;    m.Pd_PS = NaN;                               % [TBD: Student 2]
 % NOTE: w_k (Sheet: Decision Matrix weights, Acc 35 / Cov 25 / Env 15 / Cost 10 / Pwr 10 / Priv 5 %) is NOT used by this repo (no zone
 % weighting here) and must not be used anywhere in the code. It only appears in sheet_values.csv; the value is owned by Student 2.
 m.w_k = NaN;   % [NOT USED IN THIS REPO: Student 2] Decision Matrix weights, see the note above
-m.cell_size = NaN;  m.R_hot = NaN;  m.R_cold = NaN;   % [TBD: DAS-map zones (WIP)] zones are not in this repo
-m.lambda_hot = NaN;  m.lambda_neutral = NaN;  m.lambda_cold = NaN;                                % [TBD: DAS-map zones (WIP)]
+m.R_hot = NaN;  m.R_cold = NaN;   % [COMPUTED-ZONES] output of main_zones.m (k-means thresholds on cell risk), see results_zones/; not an input
+m.lambda_hot_range     = [11 20];  % events/day per ZONE [SHEET: team assumption]
+m.lambda_neutral_range = [8 10];   % events/day per ZONE [SHEET: team assumption]
+m.lambda_cold_range    = [0 0];    % events/day per ZONE [SHEET: team assumption]  (0 -> Cold cells never get simulated intrusions: WARNING in main_zones)
+m.lambda_hot = mean(m.lambda_hot_range);  m.lambda_neutral = mean(m.lambda_neutral_range);  m.lambda_cold = mean(m.lambda_cold_range);   % [DERIVED] mid of the range, events/day per zone
+
+% ----- Zones (cell classification, main_zones.m) -----
+m.cell_size      = 1e3;   % m [CHOSEN: >= Cov_CCTV (100 m -> ~10 cameras/cell), >> DAS resolution (10 m); drones (11 km radius) are a
+                          %  SHARED resource across many cells, not per cell]
+m.cell_size_sens = [500 1000 2000];   % m [CHOSEN: sensitivity runs]
+m.cell_risk_pct  = 90;    % [CHOSEN: the intruder picks the easiest point; P90 of the 30 m DEM-grid risk values in the cell is robust to single outliers]
+m.zone_k         = 3;     % [CHOSEN: Cold / Neutral / Hot] k-means clusters on cell risk
+m.zone_kmeans_replicates = 50;   % [CHOSEN] k-means replicates
+m.zone_seed      = 20261101;     % [SIM SETTING] fixed seed (same as cfg.seed)
+m.zone_smooth_sigma = 6;   % DEM pixels [ASSUMED: design] Gaussian smoothing of the risk grid, same as the figure's risk (compute_risk.m)
+m.zone_step_m    = 5;     % m [CHOSEN] boundary densification step for length-per-cell accounting
 m.C_total = NaN;                                                                                  % [TBD: team] needs all component costs
 
 % ----- Fibre / geometry design (moved unchanged from config.m except where noted) -----
@@ -74,6 +102,9 @@ m.densify_step  = 20;     % polyline densification step [m] [ASSUMED: geometry/d
 
 % ----- Risk score (DESIGN ASSUMPTIONS): risk = w1*slope + w2*blind + w3*road distance -----
 m.risk_w          = [0.40 0.35 0.25];  % [ASSUMED: design]  (slope, blind spot, road distance) -- NOT the Sheet symbol w_k
+m.zone_w_raw     = m.risk_w([1 3]);   % [ASSUMED: design; to be replaced by Student 3 Risk Matrix] slope and road-distance weights (CCTV/blind term dropped)
+m.zone_w         = m.zone_w_raw / sum(m.zone_w_raw);   % [DERIVED] renormalised to sum 1 (slope, road distance); intrinsic risk only: camera placement is an
+                          %  optimisation OUTPUT, so using the CCTV visibility term for zoning would be circular
 m.slope_full_deg  = 40;     % [ASSUMED: design] slope at which the slope term saturates [deg]
 m.road_full_m     = 3000;   % [ASSUMED: design] road distance at which the road term saturates [m]
 m.corridor_km     = 2.0;    % [ASSUMED: design] risk corridor each side of the fibre [km]
@@ -92,6 +123,7 @@ m.hajj_pilgrims_2026 = 1707301;  % [ASSUMED: GASTAT Hajj Statistics Report 1447H
 
 % ----- [COMPUTED-MAP] -----
 m = apply_overrides(m);
+if isnan(m.C_DAS_int_override), m.C_DAS_int = m.C_DAS_int_EUR * m.fx_EUR_SAR; end   % [DERIVED] SAR/unit
 root = fileparts(mfilename('fullpath'));
 m.L_boundary_source = fullfile(root, 'data', 'boundary_perimeter.csv');   % [COMPUTED-MAP] OSM Haram + Holy Sites union
 if ~isfile(m.L_boundary_source), m.L_boundary_source = fullfile(root, 'data', 'boundary_haram_osm.csv'); end
@@ -152,7 +184,7 @@ fprintf('Backscatter P_bs (tau = %.1f ns): %.1f nW at z = 0, %.1f nW at 20 km  [
 for s = {'C_DAS_int', 'C_fiber'}
     if isnan(m.(s{1})), fprintf('%s = TBD (%s)\n', s{1}, owner.(s{1})); else, fprintf('%s = %g\n', s{1}, m.(s{1})); end
 end
-fprintf('C_DAS_total (a) known terms only : %g   (currency TBD; fibre unit = per km)\n', m.C_DAS_known);
+fprintf('C_DAS_total (a) known terms only : %g   (SAR; fibre unit = per km)\n', m.C_DAS_known);
 if m.C_DAS_complete, fprintf('C_DAS_total (b) missing terms    : none\n');
 else, fprintf('C_DAS_total (b) missing terms    : %s  -> total INCOMPLETE\n', strjoin(m.C_DAS_missing, ', ')); end
 end
