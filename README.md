@@ -34,6 +34,8 @@ The interrogator is the **FEBUS A1-NEO** (datasheet rev. 20260618). All device, 
 | --- | --- | --- | --- |
 | R_DAS | 20 000 | m | [DATASHEET] 20 km option, 0.2 dB/km (70/100 km exist; 100 km needs LR option) |
 | N_ch_DAS | 4 | - | [DATASHEET] synchronous channels |
+| N_ch_active | 2 | - | [DERIVED: two directions along the boundary] |
+| N_ch_spare | 2 | - | [DERIVED] = N_ch_DAS - N_ch_active |
 | P_DAS | 170 | W | [DATASHEET] |
 | dz_res | 10 | m | [SIM SETTING] same as DAS-Simulation |
 | dz_samp | 2 | m | [SIM SETTING] channel spacing |
@@ -43,8 +45,8 @@ The interrogator is the **FEBUS A1-NEO** (datasheet rev. 20260618). All device, 
 | L_boundary | 145 473.5 | m | [COMPUTED-MAP] haversine length of `data/boundary_perimeter.csv` (Haram + Arafat union, provisional) |
 
 ```
-N_DAS_int   = ceil( L_boundary / (N_ch_DAS * R_DAS) )              = ceil(145.47 / 80) = 2
-P_DAS_total = N_DAS_int * P_DAS                                      = 340 W
+N_DAS_int   = ceil( L_boundary / (N_ch_active * R_DAS) )           = ceil(145.47 / 40) = 4
+P_DAS_total = N_DAS_int * P_DAS                                      = 680 W
 C_DAS_total = N_DAS_int * C_DAS_int + (L_boundary/1e3) * C_fiber     (C_fiber per km)
 ```
 Missing terms never produce a silent NaN: `map_params('report')` prints `<symbol> = TBD (<owner>)` and the total twice
@@ -52,10 +54,15 @@ Missing terms never produce a silent NaN: `map_params('report')` prints `<symbol
 
 **Shelter note:** max operating temperature is 40 degC, so the interrogators must be housed in air-conditioned shelters; only the cable is in the field.
 
-**Placement:** `compute_fibre.m` splits the ring into N_DAS_int equal arcs, puts a site at the middle of each arc and gives it
-N_ch_DAS segments (two each way along the boundary). The two outer segments of a site start one segment away, so a straight-line feeder
-is counted. **With this layout 4 of 8 segments need up to 30.4 km of fibre per channel (> R_DAS = 20 km)**, i.e. N_DAS_int = 2 only holds if each
-channel can start at the site (e.g. 3 spurs/cables out of the shelter). Printed as a warning; `results_febus/placement_plan.png` shows it.
+**Why coverage = 2 x R_DAS, not 4 x R_DAS:** a site on a linear/closed boundary can only serve two directions (channel 1 one way, channel 2 the other).
+Channels 3-4 could only reach further boundary through lead-in fibre, which counts against the 20 km range, so they add no coverage. They are
+marked as **spare (redundancy / possible double coverage in Hot zones)** on the map legend and carry no sensing segment (`m.N_ch_spare`).
+The first version assumed 4 segments per site (N = 2); that needed up to 30.4 km of fibre per channel, so it was rejected.
+
+**Placement:** `compute_fibre.m` splits the ring into N equal arcs, puts each site on the boundary at the middle of its arc (lead-in 0)
+and gives it two sensing channels of half an arc each. An `assert` fails if any channel's lead-in + sensing fibre exceeds R_DAS; if it
+would, sites are added until it passes and the extra count is reported (`m.N_DAS_int_extra`). Result: 4 sites, 8 channels of 18.18 km each.
+`results_febus/placement_plan.png` shows it. Lead-in from a shelter to the boundary is not modelled (sites are on the boundary).
 
 `main_static` also writes `results_febus/sheet_values.csv` (Sheet columns Symbol ... Status), figures (png 300 dpi + pdf) and `placement_plan`.
 

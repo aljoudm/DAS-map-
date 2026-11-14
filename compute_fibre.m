@@ -26,41 +26,46 @@ L_m  = Lgeo * cfg.SLACK_FACTOR;
 fibre.lat = lat;  fibre.lon = lon;  fibre.s_m = s * cfg.SLACK_FACTOR;
 fibre.L_geo_km    = Lgeo / 1e3;
 fibre.L_km        = L_m / 1e3;
-fibre.N_IU        = cfg.m.N_DAS_int;                  % = ceil(L / (N_ch x R_DAS)), computed in map_params.m
+fibre.N_IU        = cfg.m.N_DAS_int;                  % formula value (map_params.m); final count set by the placement below
 if abs(L_m - cfg.m.L_fibre) > 1, warning('L_boundary (map_params) differs from compute_fibre by %.1f m.', L_m - cfg.m.L_fibre); end
 fibre.N_sensing   = round(L_m / cfg.SPATIAL_RES_M);   % sensing points = L / spatial resolution
 fibre.N_samples   = round(L_m / cfg.CH_SPACING_M);    % channel samples = L / channel spacing
 
-% Placement: the ring is split into N_IU equal arcs (one per interrogator); the site sits at the middle of its arc and
-% serves N_ch segments (each arc/N_ch long): two run away from the site along the boundary in each direction.
-% The two OUTER segments of a site start one segment-length away along the boundary, so a feeder fibre is needed:
-% feeder = straight-line distance site -> the segment's near end (best case; real routing is >= this).
-% Required fibre per channel = feeder + segment length; compared with R_DAS below.
-N = fibre.N_IU;  nch = cfg.N_CH;  fibre.nSeg = N * nch;
+% Placement (two directions per site): each interrogator uses N_ch_active = 2 channels, one in each direction along the
+% boundary; channels 3-4 are spare (redundancy / possible double coverage in Hot zones) and get NO sensing segment.
+% The ring is split into N equal arcs, the site sits at the middle of its arc (ON the boundary, so lead-in = 0) and each of
+% its two channels senses half an arc. Every channel's total fibre = lead-in + sensing length must be <= R_DAS; if the
+% geometry fails this, sites are added until it passes (and the extra count is reported).
+nact = cfg.N_CH_ACTIVE;  N = cfg.m.N_DAS_int;
 at = @(u) 1 + mod(round(u * n), n);                       % index on the closed ring for arc fraction u (0..1)
-site = zeros(N, 1);  sa = zeros(fibre.nSeg, 1);  sb = sa;  sSite = sa;  nearIdx = sa;  farIdx = sa;  dirn = sa;  feeder = sa;
-for g = 1:N
-    u0 = (g - 1) / N;  uS = u0 + 0.5 / N;  site(g) = at(uS);
-    for j = 1:nch
-        q = (g - 1) * nch + j;
-        ua = u0 + (j - 1) / (N * nch);  ub = u0 + j / (N * nch);          % segment spans arc fractions [ua, ub]
-        if (ua + ub) / 2 < uS, nearIdx(q) = at(ub); farIdx(q) = at(ua); dirn(q) = -1;   % left of the site: near end is ub
-        else,                  nearIdx(q) = at(ua); farIdx(q) = at(ub); dirn(q) = +1; end
-        sa(q) = ua * fibre.L_km;  sb(q) = ub * fibre.L_km;  sSite(q) = g;
-        feeder(q) = hav([lat(site(g)) lon(site(g))], [lat(nearIdx(q)) lon(nearIdx(q))], R) / 1e3;   % [km]
+while true
+    nSeg = N * nact;
+    site = zeros(N, 1);  sa = zeros(nSeg, 1);  sb = sa;  sSite = sa;  nearIdx = sa;  farIdx = sa;  dirn = sa;  leadin = sa;
+    for g = 1:N
+        u0 = (g - 1) / N;  uS = u0 + 0.5 / N;  site(g) = at(uS);
+        for j = 1:nact
+            q = (g - 1) * nact + j;
+            ua = u0 + (j - 1) / (N * nact);  ub = u0 + j / (N * nact);      % segment spans arc fractions [ua, ub]
+            if j == 1, nearIdx(q) = at(ub); farIdx(q) = at(ua); dirn(q) = -1;   % channel 1: one direction from the site
+            else,      nearIdx(q) = at(ua); farIdx(q) = at(ub); dirn(q) = +1; end   % channel 2: the other direction
+            sa(q) = ua * fibre.L_km;  sb(q) = ub * fibre.L_km;  sSite(q) = g;
+            leadin(q) = 0;                                  % the segment starts at the site (on the boundary)
+        end
     end
+    need = (sb - sa) + leadin;                              % total fibre per channel [km]
+    if all(need <= cfg.R_CH_KM + 1e-9), break; end
+    N = N + 1;                                              % geometry fails: add a site
 end
+extra = N - cfg.m.N_DAS_int;
+if extra > 0, warning('PLACEMENT:EXTRA', 'Placement needed %d extra interrogator(s): set m.N_DAS_int_extra = %d in map_params.m.', extra, extra); end
+assert(all(need <= cfg.R_CH_KM + 1e-9), 'A sensing channel exceeds R_DAS (%.2f km > %g km).', max(need), cfg.R_CH_KM);
+fibre.N_IU = N;  fibre.nSeg = nSeg;  fibre.N_ch_spare = cfg.m.N_ch_spare;
 fibre.iuIdx = site;   fibre.iuLat = lat(site);  fibre.iuLon = lon(site);
 fibre.iuSpanKm = fibre.L_km / N;                          % boundary length served by one interrogator
 fibre.segSite = sSite;  fibre.segNearIdx = nearIdx;  fibre.segFarIdx = farIdx;  fibre.segDir = dirn;
-fibre.segLenKm = (sb - sa);  fibre.segFeederKm = feeder;
-fibre.segNeedKm = fibre.segLenKm + feeder;                % fibre per channel incl. the straight-line feeder
-fibre.segOverRange = fibre.segNeedKm > cfg.R_CH_KM + 1e-9;
-if any(fibre.segOverRange)
-    warning('PLACEMENT:RANGE', ['%d of %d segments need more than R_DAS = %g km once the feeder from the site is counted ' ...
-        '(max %.1f km). The N_DAS_int formula assumes each channel serves R_DAS of boundary starting AT the site.'], ...
-        nnz(fibre.segOverRange), fibre.nSeg, cfg.R_CH_KM, max(fibre.segNeedKm));
-end
+fibre.segLenKm = (sb - sa);  fibre.segFeederKm = leadin;  fibre.segNeedKm = need;
+fibre.segOverRange = need > cfg.R_CH_KM + 1e-9;
+
 
 % Enclosed area (planar, equal-area-ish check against ~556 km^2 from Attar & Dhieb)
 y = deg2rad(lat - mean(lat)) * R;  x = deg2rad(lon - mean(lon)) * R * cosd(mean(lat));

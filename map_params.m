@@ -25,6 +25,11 @@ m.C_total_override = NaN;                                                       
 m.R_DAS     = 20e3;  % range per channel [m] (20 km option; 70/100 km exist,
                      % 100 km needs LR option, all assume 0.2 dB/km)
 m.N_ch_DAS  = 4;     % synchronous channels per interrogator
+m.N_ch_active = 2;   % [DERIVED: two directions along the boundary] a site on a linear/closed boundary can serve only two
+                     % directions (channel 1 one way, channel 2 the other); channels 3-4 would need lead-in fibre that counts
+                     % against R_DAS, so coverage per interrogator = 2 x R_DAS (NOT 4 x R_DAS)
+m.N_ch_spare  = m.N_ch_DAS - m.N_ch_active;   % [DERIVED] spare channels (redundancy / possible double coverage in Hot zones); no sensing segment assigned
+m.N_DAS_int_extra = 0;  % sites added beyond the formula because the placement assert needed them (compute_fibre.m tells you the value)
 m.P_DAS     = 170;   % power per interrogator [W]
 m.dz_res    = 10;    % spatial resolution [m] (chosen within 1-50 m [SIM SETTING]; same as DAS-Simulation)
 m.dz_samp   = 2;     % channel spacing [m] [SIM SETTING]
@@ -75,7 +80,7 @@ m.L_boundary_source = fullfile(root, 'data', 'boundary_perimeter.csv');   % [COM
 if ~isfile(m.L_boundary_source), m.L_boundary_source = fullfile(root, 'data', 'boundary_haram_osm.csv'); end
 m.L_boundary  = ring_length_m(m.L_boundary_source);          % [m] haversine sum, R = 6371008.8 m (same method as compute_fibre.m)
 m.L_fibre     = m.L_boundary * m.slack_factor;               % [m] = L_boundary while slack_factor = 1.00
-m.N_DAS_int   = ceil(m.L_fibre / (m.N_ch_DAS * m.R_DAS));    % [DERIVED] number of interrogators
+m.N_DAS_int   = ceil(m.L_fibre / (m.N_ch_active * m.R_DAS)) + m.N_DAS_int_extra;   % [DERIVED] number of interrogators
 m.P_DAS_total = m.N_DAS_int * m.P_DAS;                       % [DERIVED] [W]
 % Cost: C_DAS_total = N_DAS_int*C_DAS_int + (L/1e3)*C_fiber ; C_DAS_int per unit, C_fiber per KM (L converted m -> km).
 terms = {'C_DAS_int', m.N_DAS_int * m.C_DAS_int; 'C_fiber', (m.L_fibre / 1e3) * m.C_fiber};
@@ -112,7 +117,8 @@ function print_report(m)
 owner = struct('C_DAS_int', 'vendor quote', 'C_fiber', 'Saudi source');
 fprintf('--- map_params: FEBUS A1-NEO ---\n');
 fprintf('L_boundary    = %.1f m (%.3f km)   [COMPUTED-MAP, %s]\n', m.L_boundary, m.L_boundary / 1e3, m.L_boundary_source);
-fprintf('N_DAS_int     = %d   = ceil(L / (N_ch x R_DAS)) = ceil(%.3f / (%d x %.0f km))\n', m.N_DAS_int, m.L_fibre / 1e3, m.N_ch_DAS, m.R_DAS / 1e3);
+fprintf('N_DAS_int     = %d   = ceil(L / (N_ch_active x R_DAS)) + %d extra = ceil(%.3f / (%d x %.0f km)) + %d\n', m.N_DAS_int, m.N_DAS_int_extra, m.L_fibre / 1e3, m.N_ch_active, m.R_DAS / 1e3, m.N_DAS_int_extra);
+fprintf('Channels        : %d per interrogator = %d active (one per direction) + %d spare\n', m.N_ch_DAS, m.N_ch_active, m.N_ch_spare);
 fprintf('P_DAS_total   = %g W   (%d x %g W)\n', m.P_DAS_total, m.N_DAS_int, m.P_DAS);
 for s = {'C_DAS_int', 'C_fiber'}
     if isnan(m.(s{1})), fprintf('%s = TBD (%s)\n', s{1}, owner.(s{1})); else, fprintf('%s = %g\n', s{1}, m.(s{1})); end

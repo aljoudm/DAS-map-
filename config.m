@@ -27,6 +27,7 @@ cfg.holySitesCsv  = fullfile(cfg.dataDir, 'holy_sites.csv');
 P = map_params();   cfg.m = P;
 cfg.R_CH_KM        = P.R_DAS / 1e3;     % range per channel [km]
 cfg.N_CH           = P.N_ch_DAS;        % channels per interrogator unit
+cfg.N_CH_ACTIVE    = P.N_ch_active;     % channels that carry a sensing segment (2: one per direction)
 cfg.SPATIAL_RES_M  = P.dz_res;          % spatial resolution [m]
 cfg.CH_SPACING_M   = P.dz_samp;         % channel spacing [m]
 cfg.DENSIFY_STEP_M = P.densify_step;    % polyline densification step [m]

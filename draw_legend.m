@@ -12,12 +12,12 @@ else
 end
 edge = th.text;
 names = {'DAS fibre', 'Light pulse', 'Sim. section', 'Interrogator', 'C2 centre', 'Road entry', ...
-         'CCTV + FOV', 'UAV + cone', 'Patrol', 'Intruder', 'Vehicle on road', 'Weak coverage', 'Fibre segment end'};
-nrows = ceil(13 / ncols);
+         'CCTV + FOV', 'UAV + cone', 'Patrol', 'Intruder', 'Vehicle on road', 'Weak coverage', 'Segment end', 'Ch. 3-4: spare'};
+nrows = ceil(14 / ncols);
 wdes = pos(3) * cfg.figSizeIn(1) / ks;   hdes = pos(4) * cfg.figSizeIn(2) / ks;      % panel size in design inches
 kx = (0.775 * 8) / wdes;                                          % keeps icon widths equal to the static legend's (absolute)
 vs = 0.41 / hdes;                                                 % ... and glyph heights
-for k = 1:13
+for k = 1:14
     col = mod(k - 1, ncols);   row = floor((k - 1) / ncols);
     x = col / ncols + 0.008;   y = 1 - (row + 0.5) / nrows;   xi = x + 0.014 * kx;
     k6 = kx;
@@ -50,6 +50,7 @@ for k = 1:13
             patch(ax, [x x + 0.0095 * k6 x + 0.0095 * k6 x], [y - hh y - hh y + hh y + hh], c.riskLo, 'EdgeColor', 'none', 'FaceAlpha', 0.85);
             patch(ax, [x + 0.0095 * k6 x + 0.019 * k6 x + 0.019 * k6 x + 0.0095 * k6], [y - hh y - hh y + hh y + hh], c.riskHi, 'EdgeColor', 'none', 'FaceAlpha', 0.85);
         case 13, plot(ax, xi, y, 'd', 'MarkerSize', 3.6 * ks, 'MarkerFaceColor', c.yellow, 'MarkerEdgeColor', th.frame, 'LineWidth', 0.5 * ks);
+        case 14, plot(ax, xi, y, 's', 'MarkerSize', 4.2 * ks, 'MarkerFaceColor', 'none', 'MarkerEdgeColor', edge, 'LineWidth', 0.8 * ks);   % IU channels 3-4: redundancy / possible double coverage in Hot zones
     end
     text(ax, x + 0.034 * k6 + 0.004, y, names{k}, 'Color', th.text, 'FontName', fn.name, 'FontSize', fn.panel.size - 0.6 * ks, ...
         'VerticalAlignment', 'middle', 'HorizontalAlignment', 'left');
