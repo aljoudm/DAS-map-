@@ -42,10 +42,10 @@ end
 
 if anim, return; end                                      % interactive version animates the pulses itself
 L = F.L_km;  s = F.s_km(:);                              % light pulses: each IU launches into ONE channel (n_ch = 1),
-for k = 1:numel(F.iuIdx)                                  % travelling along the fibre segment it serves (increasing distance)
-    s0 = s(F.iuIdx(k));
-    for d = cfg.pulsePhase * cfg.pulseSpacingKm : cfg.pulseSpacingKm : F.iuSpanKm - cfg.pulseLenKm
-        drawPulse(ax, F, mod(s0 + d, L), 1, cfg, lw);
+for k = 1:F.nSeg                                          % one pulse train per channel, from the near end of its segment outward
+    s0 = s(F.segNearIdx(k));
+    for d = cfg.pulsePhase * cfg.pulseSpacingKm : cfg.pulseSpacingKm : F.segLenKm(k) - cfg.pulseLenKm
+        drawPulse(ax, F, mod(s0 + F.segDir(k) * d, L), F.segDir(k), cfg, lw);
     end
 end
 end

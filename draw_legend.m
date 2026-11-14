@@ -1,7 +1,7 @@
 function draw_legend(fig, pos, scene, ncols, framed)
 % DRAW_LEGEND  Legend of every symbol on the map. ncols = 6 gives the two-row strip of the static figure; the interactive
 % window uses fewer columns inside a framed panel.
-if nargin < 4, ncols = 6; end
+if nargin < 4, ncols = 7; end
 if nargin < 5, framed = false; end
 cfg = scene.cfg;  th = scene.th;  c = cfg.col;  fn = cfg.font;  ks = cfg.uiScale;
 if framed
@@ -11,13 +11,13 @@ else
     ax.XLim = [0 1];   ax.YLim = [0 1];   axis(ax, 'off');   ax.Tag = 'panel';
 end
 edge = th.text;
-names = {'DAS fibre', 'Light pulse', 'Simulated section', 'Interrogator', 'C2 centre', 'Road entry', ...
-         'CCTV + FOV', 'UAV + cone', 'Patrol', 'Intruder', 'Vehicle on road', 'Weak coverage'};
-nrows = ceil(12 / ncols);
+names = {'DAS fibre', 'Light pulse', 'Sim. section', 'Interrogator', 'C2 centre', 'Road entry', ...
+         'CCTV + FOV', 'UAV + cone', 'Patrol', 'Intruder', 'Vehicle on road', 'Weak coverage', 'Fibre segment end'};
+nrows = ceil(13 / ncols);
 wdes = pos(3) * cfg.figSizeIn(1) / ks;   hdes = pos(4) * cfg.figSizeIn(2) / ks;      % panel size in design inches
 kx = (0.775 * 8) / wdes;                                          % keeps icon widths equal to the static legend's (absolute)
 vs = 0.41 / hdes;                                                 % ... and glyph heights
-for k = 1:12
+for k = 1:13
     col = mod(k - 1, ncols);   row = floor((k - 1) / ncols);
     x = col / ncols + 0.008;   y = 1 - (row + 0.5) / nrows;   xi = x + 0.014 * kx;
     k6 = kx;
@@ -49,6 +49,7 @@ for k = 1:12
             hh = 0.16 * vs;
             patch(ax, [x x + 0.0095 * k6 x + 0.0095 * k6 x], [y - hh y - hh y + hh y + hh], c.riskLo, 'EdgeColor', 'none', 'FaceAlpha', 0.85);
             patch(ax, [x + 0.0095 * k6 x + 0.019 * k6 x + 0.019 * k6 x + 0.0095 * k6], [y - hh y - hh y + hh y + hh], c.riskHi, 'EdgeColor', 'none', 'FaceAlpha', 0.85);
+        case 13, plot(ax, xi, y, 'd', 'MarkerSize', 3.6 * ks, 'MarkerFaceColor', c.yellow, 'MarkerEdgeColor', th.frame, 'LineWidth', 0.5 * ks);
     end
     text(ax, x + 0.034 * k6 + 0.004, y, names{k}, 'Color', th.text, 'FontName', fn.name, 'FontSize', fn.panel.size - 0.6 * ks, ...
         'VerticalAlignment', 'middle', 'HorizontalAlignment', 'left');

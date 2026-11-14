@@ -23,6 +23,42 @@ The first run downloads the data listed below (several minutes, about 1 GB); lat
 computed fibre length, number of interrogators and sensing points. Theme and all design parameters are in `config.m`
 (`cfg.THEME`, `cfg.renderThemes`).
 
+## FEBUS A1-NEO settings
+
+The interrogator is the **FEBUS A1-NEO** (datasheet rev. 20260618). All device, cost, power and design values live in
+**`map_params.m`** (struct `m`); every other script reads from it (`config.m` just copies them). Outputs go to `results_febus/`
+(the earlier EOSS-device figures stay in `out/`).
+**To update a value, edit only the overrides block in `map_params.m`** (NaN = not received yet; a number replaces the default).
+
+| Symbol (Sheet) | Value | Unit | Tag |
+| --- | --- | --- | --- |
+| R_DAS | 20 000 | m | [DATASHEET] 20 km option, 0.2 dB/km (70/100 km exist; 100 km needs LR option) |
+| N_ch_DAS | 4 | - | [DATASHEET] synchronous channels |
+| P_DAS | 170 | W | [DATASHEET] |
+| dz_res | 10 | m | [SIM SETTING] same as DAS-Simulation |
+| dz_samp | 2 | m | [SIM SETTING] channel spacing |
+| T_op_max | 40 | degC | [DATASHEET] |
+| C_DAS_int | TBD | currency / unit | [TBD: vendor quote] |
+| C_fiber | TBD | currency / km | [TBD: Saudi source]; the repo had no previous cost value |
+| L_boundary | 145 473.5 | m | [COMPUTED-MAP] haversine length of `data/boundary_perimeter.csv` (Haram + Arafat union, provisional) |
+
+```
+N_DAS_int   = ceil( L_boundary / (N_ch_DAS * R_DAS) )              = ceil(145.47 / 80) = 2
+P_DAS_total = N_DAS_int * P_DAS                                      = 340 W
+C_DAS_total = N_DAS_int * C_DAS_int + (L_boundary/1e3) * C_fiber     (C_fiber per km)
+```
+Missing terms never produce a silent NaN: `map_params('report')` prints `<symbol> = TBD (<owner>)` and the total twice
+(known terms only / missing terms). Zone symbols (`R_hot`, `lambda_*`, ...), CCTV / drone / point-sensor and `Pd_*`/`Pc_*` values are not in this repo; they are TBD overrides.
+
+**Shelter note:** max operating temperature is 40 degC, so the interrogators must be housed in air-conditioned shelters; only the cable is in the field.
+
+**Placement:** `compute_fibre.m` splits the ring into N_DAS_int equal arcs, puts a site at the middle of each arc and gives it
+N_ch_DAS segments (two each way along the boundary). The two outer segments of a site start one segment away, so a straight-line feeder
+is counted. **With this layout 4 of 8 segments need up to 30.4 km of fibre per channel (> R_DAS = 20 km)**, i.e. N_DAS_int = 2 only holds if each
+channel can start at the site (e.g. 3 spurs/cables out of the shelter). Printed as a warning; `results_febus/placement_plan.png` shows it.
+
+`main_static` also writes `results_febus/sheet_values.csv` (Sheet columns Symbol ... Status), figures (png 300 dpi + pdf) and `placement_plan`.
+
 ## Interactive version and video
 
 ```matlab

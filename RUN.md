@@ -20,8 +20,8 @@ Project folder: `C:\Users\aljou\Downloads\DAS Map`
 ```matlab
 main_static
 ```
-- Takes about 2 to 4 minutes. The Command Window prints fibre length (145.5 km), interrogators (3) and sensing points.
-- Results appear in the `out` folder: `digital_twin_light.png` (use this one in the report) and `digital_twin_dark.png` (slides).
+- Takes about 2 to 4 minutes. The Command Window prints fibre length (145.5 km), interrogators (2, FEBUS A1-NEO) and sensing points; FEBUS results go to `results_febus\` (see README).
+- The older EOSS-device results are in the `out` folder: `digital_twin_light.png` (use this one in the report) and `digital_twin_dark.png` (slides).
 - The LaTeX caption is `out\figure_snippet.tex`, the references are `out\references_additions.bib`.
 
 ## 4. The interactive version

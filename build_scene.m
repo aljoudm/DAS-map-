@@ -13,6 +13,8 @@ G  = griddedInterpolant({T.base.Y(:,1), T.base.X(1,:)}, Zd, 'linear', 'nearest')
 zf = movmean(G(F.y, F.x), 15);
 F.z = max(zf, T.heightXY(F.x, F.y)) + cfg.fibreLift;
 F.iuX = F.x(F.iuIdx);   F.iuY = F.y(F.iuIdx);   F.iuZ = F.z(F.iuIdx);
+segEnd = unique([F.segNearIdx; F.segFarIdx]);                                   % segment ends (shared ends drawn once)
+F.segEndX = F.x(segEnd);   F.segEndY = F.y(segEnd);   F.segEndZ = F.z(segEnd);
 poly.x = F.x;   poly.y = F.y;
 
 % Infrastructure (PROPOSED placements) and weak-coverage risk (OSM roads + DEM + directional CCTV model)

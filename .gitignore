@@ -13,6 +13,8 @@ out/*
 !out/digital_twin_dark.png
 !out/figure_snippet.tex
 !out/references_additions.bib
+# FEBUS A1-NEO outputs (figures, sheet_values.csv)
+!results_febus/
 
 # ---- Scratch / development helpers ----
 test/
