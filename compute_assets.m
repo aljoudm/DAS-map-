@@ -20,7 +20,7 @@ keep = true(size(pts, 1), 1);                       % merge dual carriageways / 
 for a = 1:size(pts, 1)
     if ~keep(a), continue; end
     d = hypot(pts(:,1) - pts(a,1), pts(:,2) - pts(a,2));
-    keep(d < 1.5 & (1:size(pts,1))' > a) = false;
+    keep(d < cfg.entryMergeKm &(1:size(pts,1))' > a) = false;
 end
 pts = pts(keep, :);
 A.entryIdx = knnsearch(fibreXY, pts);               % snap to the fibre
@@ -30,7 +30,7 @@ A.entry = [F.x(A.entryIdx), F.y(A.entryIdx), F.z(A.entryIdx)];
 tmp = arrayfun(@(r) [r.x r.y], roads, 'UniformOutput', false);
 allRoad = vertcat(tmp{:});
 [~, dr] = knnsearch(allRoad, fibreXY);
-cand = find(dr < 0.5);
+cand = find(dr < cfg.cctvRoadKm);
 camIdx = A.entryIdx(:);
 while numel(camIdx) < cfg.nCCTV && ~isempty(cand)
     d = min(pdist2(fibreXY(cand, :), fibreXY(camIdx, :)), [], 2);
@@ -49,7 +49,7 @@ isMain = ismember([roads.class], ["motorway" "trunk" "primary" "secondary" "tert
 tmp = arrayfun(@(r) [r.x r.y], roads(isMain), 'UniformOutput', false);
 rp = vertcat(tmp{:});
 [~, dF] = knnsearch(fibreXY, rp);
-pc = rp(dF > 0.4 & dF < 1.6, :);
+pc = rp(dF > cfg.patrolBandKm(1) & dF < cfg.patrolBandKm(2), :);
 sel = pc(randi(size(pc, 1)), :);
 while size(sel, 1) < cfg.nPatrol
     d = min(pdist2(pc, sel), [], 2);   [~, j] = max(d);   sel(end+1, :) = pc(j, :); %#ok<AGROW>

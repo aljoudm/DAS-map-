@@ -27,7 +27,7 @@ plot3(ax, [E.vehicle(1) xv], [E.vehicle(2) E.vehicle(2)], [E.vehicle(3) + 0.1 zv
 halo_text(ax, xv, E.vehicle(2), zv, ['detected ' ar ' vehicle on road ' ar ' logged'], cfg.font.asset, th.aniLbl, scene, 'vehicleLabel', 'lbl_veh');
 sMid = mod(E.secS0 + E.secDir * E.secLen / 2, F.L_km);                               % middle of the simulated section
 xm = interp1(F.s_km, F.x, sMid, 'linear', 'extrap');   ym = interp1(F.s_km, F.y, sMid, 'linear', 'extrap');   zm = interp1(F.s_km, F.z, sMid, 'linear', 'extrap');
-zs = zm + 4.2;
+zs = zm + 1.6;
 plot3(ax, [xm xm - 4.0], [ym ym], [zm + 0.1 zs - 0.5], '-', 'Color', [th.lblText 0.6], 'LineWidth', 0.5 * ks, 'Tag', 'leader:secLabel');
-halo_text(ax, xm - 4.0, ym, zs, 'simulated section (10 km)', cfg.font.asset, th.lblText, scene, 'secLabel', 'lbl_text');
+halo_text(ax, xm - 4.0, ym, zs, sprintf('simulated section (%.1f km)', E.secLen), cfg.font.asset, th.lblText, scene, 'secLabel', 'lbl_text');
 end

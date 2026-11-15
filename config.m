@@ -6,7 +6,7 @@ function cfg = config(theme)
 root = fileparts(mfilename('fullpath'));
 cfg.root     = root;
 cfg.dataDir  = fullfile(root, 'data');
-cfg.outDir   = fullfile(root, 'out');
+cfg.outDir   = fullfile(root, 'results_febus');   % FEBUS A1-NEO outputs; the previous (EOSS-device) figures stay in out/
 cfg.seed     = 20261101;                 % deterministic output
 
 cfg.THEME = 'dark';                      % 'dark' (presentations) | 'light' (printed report)
@@ -22,29 +22,24 @@ cfg.mashaerRelationId = 19262645;
 cfg.perimeterCsv  = fullfile(cfg.dataDir, 'boundary_perimeter.csv');
 cfg.holySitesCsv  = fullfile(cfg.dataDir, 'holy_sites.csv');
 
-% --- Fibre / interrogator design -------------------------------------------
-% Reference device: EOSS DAS interrogator, datasheet ED_PD010 rev 1.0 (hosted on asean.prysmian.com); see data/SOURCES.md.
-cfg.R_CH_KM       = 70;     % range per channel [km]            (datasheet)
-cfg.N_CH          = 1;      % channels per interrogator unit    (datasheet; 2 optional)
-cfg.SPATIAL_RES_M = 20;     % spatial resolution [m]  ASSUMPTION: datasheet range is 2.5-30 m
-cfg.DENSIFY_STEP_M = 20;    % polyline densification step [m] (= spatial resolution)
-cfg.SLACK_FACTOR  = 1.00;   % cable length / geometric length. ASSUMPTION: 1.00 = none added.
-
-% --- Risk score (DESIGN ASSUMPTIONS): risk = w1*slope + w2*blind + w3*road distance ----
-cfg.W_SLOPE = 0.4;  cfg.W_BLIND = 0.35;  cfg.W_ROAD = 0.25;
-cfg.SLOPE_FULL_DEG = 40;      % slope at which the slope term saturates
-cfg.ROAD_FULL_M    = 3000;    % distance to nearest road at which the road term saturates
-cfg.corridorKm     = 2.0;     % risk is evaluated this far each side of the fibre
-cfg.camRangeKm     = 1.4;     % CCTV useful range (ILLUSTRATIVE)
-cfg.camFovDeg      = 100;     % CCTV horizontal field of view (ILLUSTRATIVE)
-cfg.camMastM       = 8;       % camera height above ground [m] (ILLUSTRATIVE)
-cfg.targetM        = 1.7;     % target (person) height for the viewshed [m]
-cfg.riskShowFrom   = 0.30;    % risk below this is transparent in the overlay
-
-% --- Illustrative scenario counts / values (labelled as illustrative on the figure) ----
-cfg.nCCTV = 16;   cfg.nPatrol = 5;   cfg.nUAV = 3;     % proposed placements (design elements), not real sites
+% --- Device / fibre / risk / scenario values: ALL come from map_params.m (edit the overrides block there) ----
+% Device now FEBUS A1-NEO (datasheet rev. 20260618); tags and sources are in map_params.m.
+P = map_params();   cfg.m = P;
+cfg.R_CH_KM        = P.R_DAS / 1e3;     % range per channel [km]
+cfg.N_CH           = P.N_ch_DAS;        % channels per interrogator unit
+cfg.N_CH_ACTIVE    = P.N_ch_active;     % channels that carry a sensing segment (2: one per direction)
+cfg.SPATIAL_RES_M  = P.dz_res;          % spatial resolution [m]
+cfg.CH_SPACING_M   = P.dz_samp;         % channel spacing [m]
+cfg.DENSIFY_STEP_M = P.densify_step;    % polyline densification step [m]
+cfg.SLACK_FACTOR   = P.slack_factor;    % cable length / geometric length
+cfg.W_SLOPE = P.risk_w(1);  cfg.W_BLIND = P.risk_w(2);  cfg.W_ROAD = P.risk_w(3);
+cfg.SLOPE_FULL_DEG = P.slope_full_deg;  cfg.ROAD_FULL_M = P.road_full_m;  cfg.corridorKm = P.corridor_km;
+cfg.camRangeKm = P.cam_range_km;  cfg.camFovDeg = P.cam_fov_deg;  cfg.camMastM = P.cam_mast_m;
+cfg.targetM = P.target_m;  cfg.riskShowFrom = P.risk_show_from;
+cfg.nCCTV = P.n_CCTV;   cfg.nPatrol = P.n_patrol;   cfg.nUAV = P.n_UAV;
+cfg.entryMergeKm = P.entry_merge_km;  cfg.cctvRoadKm = P.cctv_road_km;  cfg.patrolBandKm = P.patrol_band_km;
 cfg.entryClasses = ["motorway" "trunk" "primary" "motorway_link" "trunk_link" "primary_link"];
-cfg.hajjPilgrims2026 = 1707301;     % FACT: GASTAT Hajj Statistics Report 1447H (2026)
+cfg.hajjPilgrims2026 = P.hajj_pilgrims_2026;
 
 % --- Mashaer view (inset) ---------------------------------------------------
 cfg.mashaerLat = [21.27 21.48];       % extent of the high-resolution Mashaer texture / mesh
@@ -57,7 +52,7 @@ cfg.insetMargin_km = 1.8;             % minimum margin between these sites and t
 cfg.insetMarginTop_km = 4.2;          % top margin (screen km) so the site labels above the northern site stay inside
 cfg.insetSearchLat = [21.275 21.48];  % where the rectangle edges may be placed
 cfg.insetSearchLon = [39.825 40.035];
-cfg.simFile = fullfile(cfg.dataDir, 'das_sim', 'das_sim_main_default.mat');   % phi-OTDR output (see SOURCES.md)
+cfg.simFile = fullfile(cfg.dataDir, 'das_sim', 'das_sim_febus.mat');   % phi-OTDR output (see SOURCES.md)
 
 % --- 3D terrain / imagery (prepare_terrain.m) -------------------------------
 cfg.aoiMargin   = 0.05;     % deg of context around the perimeter bounding box
@@ -103,7 +98,7 @@ cfg.gfx = 0.55;                 % line-width / marker scale (design was drawn fo
 % --- Figure layout: physical size so that fonts stay legible when scaled to page width ----
 cfg.figSizeIn  = [8.0 5.0];
 cfg.uiScale    = 1;      % scale of fonts / markers / line widths relative to the 8-inch static design (interactive window: > 1)
-cfg.exportDpi  = 400;
+cfg.exportDpi  = 300;
 cfg.layout.main    = [0.000 0.405 1.000 0.595];        % wide oblique map across the top
 cfg.layout.rowY    = 0.095;   cfg.layout.rowH = 0.295;     % row of panels below the map
 cfg.layout.statusX = [0.006 0.268];                        % status panel: x, width

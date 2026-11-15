@@ -9,7 +9,9 @@ for k = 1:numel(F.iuIdx)                                   % IU: pole + square h
     drawRing(ax, T, x, y, 0.55, [c.cyan 0.9], 1.4 * lw);
     scatter3(ax, x, y, z0 + h, 46 * ks^2, 's', 'MarkerFaceColor', c.iu, 'MarkerEdgeColor', th.frame, 'LineWidth', 0.9 * ks, 'Tag', 'iu');
 end
-if isfield(scene, 'anim') && scene.anim, return; end      % interactive version animates the UAVs itself
+scatter3(ax, F.segEndX, F.segEndY, F.segEndZ + 0.05, 14 * ks^2, 'd', 'MarkerFaceColor', c.yellow, 'MarkerEdgeColor', th.frame, ...
+    'LineWidth', 0.5 * ks, 'Tag', 'segend');                  % fibre-segment ends (each channel serves one segment)
+if isfield(scene, 'anim') && scene.anim, return; end     % interactive version animates the UAVs itself
 
 for k = 1:numel(scene.uav)
     u = scene.uav(k);

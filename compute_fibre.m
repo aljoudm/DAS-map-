@@ -26,15 +26,49 @@ L_m  = Lgeo * cfg.SLACK_FACTOR;
 fibre.lat = lat;  fibre.lon = lon;  fibre.s_m = s * cfg.SLACK_FACTOR;
 fibre.L_geo_km    = Lgeo / 1e3;
 fibre.L_km        = L_m / 1e3;
-fibre.N_IU        = ceil(fibre.L_km / (cfg.R_CH_KM * cfg.N_CH));
-fibre.N_sensing   = round(L_m / cfg.SPATIAL_RES_M);
+fibre.N_IU        = cfg.m.N_DAS_int;                  % formula value (map_params.m); final count set by the placement below
+if abs(L_m - cfg.m.L_fibre) > 1, warning('L_boundary (map_params) differs from compute_fibre by %.1f m.', L_m - cfg.m.L_fibre); end
+fibre.N_sensing   = round(L_m / cfg.SPATIAL_RES_M);   % sensing points = L / spatial resolution
+fibre.N_samples   = round(L_m / cfg.CH_SPACING_M);    % channel samples = L / channel spacing
 
-% IUs equally spaced along the ring; each feeds L/N_IU of fibre (<= R_ch)
-k = (0:fibre.N_IU-1)' / fibre.N_IU;
-idx = 1 + round(k * n);
-fibre.iuIdx = idx;
-fibre.iuLat = lat(idx);  fibre.iuLon = lon(idx);
-fibre.iuSpanKm = fibre.L_km / fibre.N_IU;
+% Placement (two directions per site): each interrogator uses N_ch_active = 2 channels, one in each direction along the
+% boundary; channels 3-4 are spare (redundancy / possible double coverage in Hot zones) and get NO sensing segment.
+% The ring is split into N equal arcs, the site sits at the middle of its arc (lead-in = m.L_leadin, 0 while the shelter is on the boundary) and each of
+% its two channels senses half an arc. Every channel's total fibre = lead-in + sensing length must be <= R_DAS; if the
+% geometry fails this, sites are added until it passes (and the extra count is reported).
+nact = cfg.N_CH_ACTIVE;  N = cfg.m.N_DAS_int;
+at = @(u) 1 + mod(round(u * n), n);                       % index on the closed ring for arc fraction u (0..1)
+assert(cfg.m.L_leadin / 1e3 < cfg.R_CH_KM, 'Lead-in (%.2f km) leaves no sensing range within R_DAS = %g km.', cfg.m.L_leadin / 1e3, cfg.R_CH_KM);
+while true
+    nSeg = N * nact;
+    site = zeros(N, 1);  sa = zeros(nSeg, 1);  sb = sa;  sSite = sa;  nearIdx = sa;  farIdx = sa;  dirn = sa;  leadin = sa;
+    for g = 1:N
+        u0 = (g - 1) / N;  uS = u0 + 0.5 / N;  site(g) = at(uS);
+        for j = 1:nact
+            q = (g - 1) * nact + j;
+            ua = u0 + (j - 1) / (N * nact);  ub = u0 + j / (N * nact);      % segment spans arc fractions [ua, ub]
+            if j == 1, nearIdx(q) = at(ub); farIdx(q) = at(ua); dirn(q) = -1;   % channel 1: one direction from the site
+            else,      nearIdx(q) = at(ua); farIdx(q) = at(ub); dirn(q) = +1; end   % channel 2: the other direction
+            sa(q) = ua * fibre.L_km;  sb(q) = ub * fibre.L_km;  sSite(q) = g;
+            leadin(q) = cfg.m.L_leadin / 1e3;               % lead-in fibre shelter -> boundary [km] (0 while the shelter is on the boundary)
+        end
+    end
+    need = (sb - sa) + leadin;                              % total fibre per channel [km]
+    if all(need <= cfg.R_CH_KM + 1e-9), break; end
+    N = N + 1;                                              % geometry fails: add a site
+end
+extra = N - cfg.m.N_DAS_int;
+fibre.segMarginKm = cfg.R_CH_KM - need;                   % remaining range margin per channel [km]
+fprintf('Channel margin  : R_DAS - (lead-in + sensing) per channel [km]: %s\n', strjoin(compose('%.2f', fibre.segMarginKm(:)'), ', '));
+if extra > 0, warning('PLACEMENT:EXTRA', 'Placement needed %d extra interrogator(s): set m.N_DAS_int_extra = %d in map_params.m.', extra, extra); end
+assert(all(need <= cfg.R_CH_KM + 1e-9), 'A sensing channel exceeds R_DAS (%.2f km > %g km).', max(need), cfg.R_CH_KM);
+fibre.N_IU = N;  fibre.nSeg = nSeg;  fibre.N_ch_spare = cfg.m.N_ch_spare;
+fibre.iuIdx = site;   fibre.iuLat = lat(site);  fibre.iuLon = lon(site);
+fibre.iuSpanKm = fibre.L_km / N;                          % boundary length served by one interrogator
+fibre.segSite = sSite;  fibre.segNearIdx = nearIdx;  fibre.segFarIdx = farIdx;  fibre.segDir = dirn;
+fibre.segLenKm = (sb - sa);  fibre.segFeederKm = leadin;  fibre.segNeedKm = need;
+fibre.segOverRange = need > cfg.R_CH_KM + 1e-9;
+
 
 % Enclosed area (planar, equal-area-ish check against ~556 km^2 from Attar & Dhieb)
 y = deg2rad(lat - mean(lat)) * R;  x = deg2rad(lon - mean(lon)) * R * cosd(mean(lat));

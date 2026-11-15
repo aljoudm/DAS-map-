@@ -13,6 +13,8 @@ G  = griddedInterpolant({T.base.Y(:,1), T.base.X(1,:)}, Zd, 'linear', 'nearest')
 zf = movmean(G(F.y, F.x), 15);
 F.z = max(zf, T.heightXY(F.x, F.y)) + cfg.fibreLift;
 F.iuX = F.x(F.iuIdx);   F.iuY = F.y(F.iuIdx);   F.iuZ = F.z(F.iuIdx);
+segEnd = unique([F.segNearIdx; F.segFarIdx]);                                   % segment ends (shared ends drawn once)
+F.segEndX = F.x(segEnd);   F.segEndY = F.y(segEnd);   F.segEndZ = F.z(segEnd);
 poly.x = F.x;   poly.y = F.y;
 
 % Infrastructure (PROPOSED placements) and weak-coverage risk (OSM roads + DEM + directional CCTV model)
@@ -24,6 +26,12 @@ R = compute_risk(cfg, T, F, roads, A.cctv);
 % phi-OTDR simulator output (github.com/aljoudm/DAS-Simulation, main.m defaults), see SOURCES.md
 scene.sim = getfield(load(cfg.simFile), 'sim');
 sim = scene.sim;
+% Detection threshold: the simulator's rule median + 8*1.4826*MAD, evaluated over the ONE channel the system monitors (z <= channel
+% length). The importer's full-profile value is kept as sim.thr_full; no simulated number is altered.
+Lch0 = max(F.segNeedKm) * 1e3;   kk = sim.z <= Lch0;   mdn = median(sim.a(kk));
+sim.thr_full = sim.thr;   sim.thr = mdn + 8 * 1.4826 * median(abs(sim.a(kk) - mdn));   sim.median_full = sim.median;   sim.median = mdn;
+for e = sim.events, if e.z0 <= Lch0 && e.peak_nm <= sim.thr, warning('Event "%s" (%.2f nm) is below the channel threshold %.2f nm.', e.name, e.peak_nm, sim.thr); end, end
+scene.sim = sim;
 isCal = strcmp([sim.events.type], "sine");                    % calibration sine is not a field event
 ref = max([sim.events(~isCal).peak_nm]);                      % colour-scale reference [nm]
 scene.energyRef_nm = ref;   scene.thresholdNorm = sim.thr / ref;
@@ -55,29 +63,35 @@ rf = movmean(R.at(F.lat, F.lon), 51);               % risk along the fibre (~1 k
 [~, dRoad] = knnsearch(A.roadPts, [F.x F.y]);        % distance fibre -> nearest major road [km]
 names = [sim.events.name];
 zW = sim.events(names == "Walking").z0 / 1e3;   zV = sim.events(names == "Vehicle").z0 / 1e3;   % positions in the simulated section [km]
-dv = zV - zW;
-cand = find(dIU > 0.25 * span);   [~, ord] = sort(rf(cand), 'descend');   cand = cand(ord);
+% The simulated section is laid onto ONE physical FEBUS channel: z = 0 at the channel's near end (interrogator side), running
+% along the channel (length Lch). Every imported event must lie inside the channel, otherwise stop and ask.
+Lch = max(F.segNeedKm);
+for e = sim.events, if e.z0 / 1e3 + 0.015 > Lch, error('Simulated event "%s" at %.2f km lies beyond the channel length %.2f km: tell the project lead before placing it.', e.name, e.z0 / 1e3, Lch); end, end
+nq = F.nSeg;   iW = zeros(nq, 1);   iV = zeros(nq, 1);
+for q = 1:nq                                         % fibre index of walking / vehicle if the section sits on channel q
+    s0 = s(F.segNearIdx(q));
+    dd = abs(s - mod(s0 + F.segDir(q) * zW, L));  dd = min(dd, L - dd);  [~, iW(q)] = min(dd);
+    dd = abs(s - mod(s0 + F.segDir(q) * zV, L));  dd = min(dd, L - dd);  [~, iV(q)] = min(dd);
+end
+[~, ord] = sort(rf(iW), 'descend');                  % highest-risk walking point first
 found = false;
 for roadTol = [0.15 0.30 0.60]
-    for ii = 1:numel(cand)
-        iInt = cand(ii);
-        for dirn = [1 -1]
-            sv = mod(s(iInt) + dirn * dv, L);   dd = abs(s - sv);   dd = min(dd, L - dd);   [~, j] = min(dd);
-            if dRoad(j) > roadTol || dIU(j) < 0.15 * span, continue; end
-            E = struct('iInt', iInt, 'cross', [F.x(iInt) F.y(iInt) F.z(iInt)], 's_int', s(iInt));
-            U = place_uavs(cfg, T, F, E, poly);
-            if min(hypot(F.x(j) - [U.x], F.y(j) - [U.y])) < 4.5, continue; end      % vehicle clear of the UAV cones
-            found = true;   break;
-        end
-        if found, break; end
+    for qi = ord(:)'
+        iInt = iW(qi);   j = iV(qi);   dirn = F.segDir(qi);
+        if dRoad(j) > roadTol, continue; end
+        E = struct('iInt', iInt, 'cross', [F.x(iInt) F.y(iInt) F.z(iInt)], 's_int', s(iInt));
+        U = place_uavs(cfg, T, F, E, poly);
+        if min(hypot(F.x(j) - [U.x], F.y(j) - [U.y])) < 4.5, continue; end      % vehicle clear of the UAV cones
+        found = true;   break;
     end
     if found, break; end
 end
-if ~found, error('No intruder / vehicle pair with the simulated spacing and a road within 600 m.'); end
+if ~found, error('No channel puts the simulated vehicle within 600 m of a major road; tell the project lead.'); end
+E.channel = qi;
 E.iInt = iInt;  E.iVeh = j;  E.riskInt = rf(iInt);  E.roadDist_km = dRoad(j);
 E.secDir = dirn;                                    % +1: simulated distance increases with the fibre arc length
-E.secS0 = mod(s(iInt) - dirn * zW, L);              % fibre arc position of simulated distance 0 [km]
-E.secLen = sim.params.L_m / 1e3;                    % 10 km
+E.secS0 = s(F.segNearIdx(qi));                      % fibre arc position of simulated distance 0 = channel near end [km]
+E.secLen = Lch;                                     % the section shown = one channel [km] (the simulation is longer: sim.params.L_m)
 
 [nx, ny] = outward_normal(F, iInt, poly);
 tx = -ny;  ty = nx;

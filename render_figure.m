@@ -62,8 +62,10 @@ north_arrow(oa, [insetPos(1) + insetPos(3) - 0.022, insetPos(2) + insetPos(4) - 
 drawnow;   pause(0.5);
 png = fullfile(cfg.outDir, sprintf('digital_twin_%s.png', th.name));
 exportgraphics(fig, png, 'Resolution', cfg.exportDpi, 'BackgroundColor', th.bg, 'Padding', 'figure');
+pdf = strrep(png, '.png', '.pdf');
+exportgraphics(fig, pdf, 'ContentType', 'image', 'Resolution', cfg.exportDpi, 'BackgroundColor', th.bg, 'Padding', 'figure');
 close(fig);
-fprintf('Saved %s\n', png);
+fprintf('Saved %s (+ .pdf)\n', png);
 end
 
 % =====================================================================================

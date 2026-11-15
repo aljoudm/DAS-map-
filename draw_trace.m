@@ -1,5 +1,5 @@
 function h = draw_trace(fig, pos, scene)
-% DRAW_TRACE  DAS trace panel: output of the phi-OTDR simulation (main.m defaults, 10 km section). The mapping to the map is
+% DRAW_TRACE  DAS trace panel: output of the phi-OTDR simulation (DAS-Simulation branch febus-a1neo, cropped to one FEBUS channel). The mapping to the map is
 % stated under the plot: walking = map intruder, vehicle = map vehicle; digging and the calibration sine are simulated only
 % (not placed on the map, neutral colour). Returns the plot axes and marker handles of the walking / vehicle peaks.
 cfg = scene.cfg;  th = scene.th;  sim = scene.sim;  fn = cfg.font;  ks = cfg.uiScale;
@@ -11,12 +11,12 @@ text(bg, 0.05, 1 - 0.12 / hin, [char(966) '-OTDR SIMULATION'], 'Color', th.muted
 axBottom = pos(2) + 0.68 * u;   axTop = pos(2) + pos(4) - 0.30 * u;
 ax = axes(fig, 'Position', [pos(1) + 0.15 * pos(3), axBottom, 0.80 * pos(3), axTop - axBottom], 'Color', 'none');
 ax.Tag = 'panel';   hold(ax, 'on');
-z = sim.z / 1e3;   a = sim.a;
+Lch = scene.events.secLen;   kk = sim.z / 1e3 <= Lch;   z = sim.z(kk) / 1e3;   a = sim.a(kk);          % one channel
 patch(ax, [z; flipud(z)], [a; zeros(size(a))], th.trace, 'FaceAlpha', 0.16, 'EdgeColor', 'none');
 plot(ax, z, a, '-', 'Color', th.trace, 'LineWidth', 0.5 * ks);
 yline(ax, sim.thr, '--', 'Color', th.thr, 'LineWidth', 0.7 * ks);
-text(ax, 9.9, sim.thr + 0.4, 'threshold', 'Color', th.thr, 'FontName', fn.name, 'FontSize', fn.note.size, ...
-    'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
+text(ax, 0.2, sim.thr + 0.4, 'threshold', 'Color', th.thr, 'FontName', fn.name, 'FontSize', fn.note.size, ...
+    'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom');
 ymax = max(a) * 1.30;   h = struct('ax', ax);
 for i = 1:numel(sim.events)
     ev = sim.events(i);
@@ -32,7 +32,7 @@ for i = 1:numel(sim.events)
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
     clear hm
 end
-xlim(ax, [0 10]);   ylim(ax, [0 ymax]);   xticks(ax, 0:2:10);   yticks(ax, 0:10:20);
+xlim(ax, [0 Lch]);   ylim(ax, [0 ymax]);   xticks(ax, 0:5:floor(Lch));   yticks(ax, 0:10:20);
 ax.FontName = fn.name;   ax.FontSize = fn.note.size;   ax.XColor = th.muted;   ax.YColor = th.muted;
 ax.LineWidth = 0.5 * ks;   ax.TickDir = 'out';   ax.Box = 'off';   ax.YGrid = 'on';   ax.GridColor = th.grid;   ax.GridAlpha = 0.6;
 xlabel(ax, 'Distance (km)', 'Color', th.muted, 'FontSize', fn.note.size);

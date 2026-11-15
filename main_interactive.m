@@ -96,8 +96,8 @@ set([hLblInt; hLblVeh], 'String', '');   set([hLdrInt; hLdrVeh], 'Visible', 'off
 an = struct();
 % light pulses: three layers per interrogator (long faint tail, mid, short bright head)
 plen = [4.5 2.7 1.1];   pcol = {[c.cyan 0.22], [c.cyan 0.55], [1 1 1 1]};   pw = [9 5.5 2.6] * lw;
-an.pulse = gobjects(nIU, 3);
-for k = 1:nIU, for q = 1:3, an.pulse(k, q) = plot3(ax, NaN, NaN, NaN, '-', 'Color', pcol{q}, 'LineWidth', pw(q)); end, end
+an.pulse = gobjects(F.nSeg, 3);                                       % one pulse train per channel (segment)
+for k = 1:F.nSeg, for q = 1:3, an.pulse(k, q) = plot3(ax, NaN, NaN, NaN, '-', 'Color', pcol{q}, 'LineWidth', pw(q)); end, end
 nn_ = numel(F.s_km) - 1;                                              % the last fibre sample repeats the first (closed ring)
 sE = [F.s_km(1:nn_); F.s_km(1:nn_) + F.L_km];   xE = [F.x(1:nn_); F.x(1:nn_)];   yE = [F.y(1:nn_); F.y(1:nn_)];   zE = [F.z(1:nn_); F.z(1:nn_)] + 0.02;
 % UAVs: rigid icon + cone in an hgtransform, moved every frame
@@ -217,12 +217,12 @@ start(tmr);
         ss = @(x) (min(max(x, 0), 1)).^2 .* (3 - 2 * min(max(x, 0), 1));
         % ---- pulses (always running)
         phase = mod(vp * t, spacing);
-        for k = 1:nIU
-            s0 = F.s_km(F.iuIdx(k));   heads = phase:spacing:(F.iuSpanKm - 0.2);
+        for k = 1:F.nSeg
+            s0 = F.s_km(F.segNearIdx(k)) + (F.segDir(k) < 0) * F.L_km;   heads = phase:spacing:(F.segLenKm(k) - 0.2);
             for q = 1:3
                 XS = [];  YS = [];  ZS = [];
                 for d = heads
-                    a = max(d - plen(q), 0);   sg = s0 + linspace(a, d, 10);
+                    a = max(d - plen(q), 0);   sg = s0 + F.segDir(k) * linspace(a, d, 10);
                     XS = [XS, interp1(sE, xE, sg), NaN];  YS = [YS, interp1(sE, yE, sg), NaN];  ZS = [ZS, interp1(sE, zE, sg), NaN]; %#ok<AGROW>
                 end
                 set(an.pulse(k, q), 'XData', XS, 'YData', YS, 'ZData', ZS);
@@ -371,12 +371,12 @@ start(tmr);
         draw_status(fig, statusPos, scene);
         hTrace = draw_trace(fig, tracePos, scene);
         draw_legend(fig, legendPos, scene, 2, true);
-        for q = 1:2   % rings that mark the two simulated events the map shows, switched on when they are detected
+        for q = 1:2 * isfield(hTrace, 'walk')   % rings that mark simulated events on the trace (none on the analytic trace)
             if q == 1, pk = hTrace.walk; col = th.intLbl; else, pk = hTrace.veh; col = th.aniLbl; end
             hRing(q) = plot(hTrace.ax, pk(1), pk(2), 'o', 'MarkerSize', 7.5 * ks, 'MarkerFaceColor', 'none', 'MarkerEdgeColor', col, ...
                 'LineWidth', 1.2 * ks, 'Visible', 'off');
         end
-        hTrace.ringW = hRing(1);   hTrace.ringV = hRing(2);
+        if isfield(hTrace, 'walk'), hTrace.ringW = hRing(1);   hTrace.ringV = hRing(2); end
         delete(findobj(fig, 'Tag', 'north'));
         north_arrow(oa, [0.03 0.50], 0.11, th.text, th.bg, cfg);
     end
